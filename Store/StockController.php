@@ -15,7 +15,7 @@ class StockController
 
     public function __invoke($request, $response, $args)
     {
-        $table_name = TABLE_PREFIX.'stock';
+        $table_name = TABLE_PREFIX.'stock_store';
         $table = new Stock($this->container->mysql,$this->container,$table_name);
 
         $table->setup();

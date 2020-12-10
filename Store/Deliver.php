@@ -10,7 +10,7 @@ class Deliver extends Table
 {
     public function setup($param = []) 
     {
-        $param = ['row_name'=>'Delivery','row_name_plural'=>'Deliveries','col_label'=>'name','pop_up'=>false];
+        $param = ['row_name'=>'Delivery','row_name_plural'=>'Deliveries','col_label'=>'name','pop_up'=>false,'add_href'=>'deliver_wizard'];
         parent::setup($param);
 
         $this->addForeignKey(['table'=>TABLE_PREFIX.'deliver_item','col_id'=>'deliver_id','message'=>'Deliver items exist for this Deliver']);

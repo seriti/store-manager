@@ -48,7 +48,7 @@ class DeliverWizard extends Wizard
         
         $this->addVariable(array('id'=>'item_count','type'=>'INTEGER','title'=>'Item count','required'=>false));
         $this->addVariable(array('id'=>'confirm_action','type'=>'STRING','title'=>'Confirmation action','new'=>'NONE'));
-        $this->addVariable(array('id'=>'confirm_email','type'=>'EMAIL','title'=>'Supplier email address','required'=>true));
+        $this->addVariable(array('id'=>'confirm_email','type'=>'EMAIL','title'=>'Client email address','required'=>false));
         
         //define pages and templates
         $this->addPage(1,'Setup','store/deliver_page1.php',['go_back'=>true]);
@@ -241,7 +241,7 @@ class DeliverWizard extends Wizard
                 $deliver['client_id'] = $this->form['client_id'];
                 $deliver['location_id'] = $this->form['location_id'];
                 //$deliver['sale_id'] = $this->form['sale_id'];
-                $deliver['item_no'] = $this->data['item_count'];
+                //$deliver['item_no'] = $this->data['item_count'];
                 $deliver['date'] = date('Y-m-d');
                 $deliver['subtotal'] = $this->data['item_subtotal'];
                 $deliver['tax'] = $this->data['item_tax'];
@@ -261,12 +261,13 @@ class DeliverWizard extends Wizard
                 $this->data['deliver_id'] = $deliver_id;
                 //NB: item['id'] is stock_id in the store
                 foreach($this->data['items'] as $item) {
-                    $store_id = Secure::clean('integer',$_POST['store_'.$item['id']]);
+                    //NB: $item['id'] is NOT stock_id
+                    $stock = Helpers::get($this->db,TABLE_PREFIX,'stock_store',$item['id'],'data_id');
 
                     $deliver_item = [];
                     $deliver_item['deliver_id'] = $deliver_id;
-                    $deliver_item['store_id'] = $store_id;
-                    $deliver_item['stock_id'] = $item['id'];
+                    $deliver_item['store_id'] = $stock['store_id'];
+                    $deliver_item['stock_id'] = $stock['stock_id'];
                     $deliver_item['quantity'] = $item['amount'];
                     $deliver_item['price'] = $item['price']; 
                     $deliver_item['subtotal'] = $item['subtotal'];
@@ -282,7 +283,7 @@ class DeliverWizard extends Wizard
                     }
 
                     Helpers::updateStockDelivered($this->db,TABLE_PREFIX,
-                                                  $deliver_item['store_id']
+                                                  $deliver_item['store_id'],
                                                   $deliver_item['stock_id'],
                                                   $deliver_item['quantity'],
                                                   $error_tmp);

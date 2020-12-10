@@ -244,7 +244,7 @@ class SetupData extends SetupModuledata
 
         //initialisation
         $this->addInitialSql('INSERT INTO `TABLE_PREFIXclient` (name,email,status) '.
-                             'VALUES("My first client","client@wherever.com",OK")');
+                             'VALUES("My first client","client@wherever.com","OK")');
 
         $this->addInitialSql('INSERT INTO `TABLE_PREFIXlocation` (name,status) '.
                              'VALUES("My default location","OK")');

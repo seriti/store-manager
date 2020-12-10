@@ -25,7 +25,7 @@ $app->group('/admin', function () {
         $this->any('/receive_file', App\Store\ReceiveFileController::class);
         $this->any('/receive_item', App\Store\ReceiveItemController::class);
         $this->any('/receive_wizard', \App\Store\ReceiveWizardController::class);
-        //$this->any('/stock', App\Store\StockController::class);
+        $this->any('/stock', App\Store\StockController::class);
         $this->any('/setup', \App\Store\SetupController::class);
         $this->any('/store', App\Store\StoreController::class);
         $this->any('/supplier', App\Store\SupplierController::class);

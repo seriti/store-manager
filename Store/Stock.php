@@ -10,29 +10,41 @@ class Stock extends Table
 {
     public function setup($param = []) 
     {
-        $param = ['row_name'=>'Stock','col_label'=>'name','pop_up'=>false];
+        $param = ['row_name'=>'Store Stock','col_label'=>'name','pop_up'=>false];
         parent::setup($param);
 
-        $this->addTableCol(['id'=>'stock_id','type'=>'INTEGER','title'=>'stock_ID','key'=>true,'key_auto'=>true]);
-        $this->addTableCol(['id'=>'store_id','type'=>'INTEGER','title'=>'Store id','join'=>'name FROM '.TABLE_PREFIX.'store WHERE store_id']);
-        $this->addTableCol(['id'=>'item_id','type'=>'INTEGER','title'=>'Item id','join'=>'name FROM '.TABLE_PREFIX.'item WHERE item_id']);
-        $this->addTableCol(['id'=>'supplier_id','type'=>'INTEGER','title'=>'Supplier id','join'=>'name FROM '.TABLE_PREFIX.'supplier WHERE supplier_id']);
-        $this->addTableCol(['id'=>'invoice_no','type'=>'STRING','title'=>'Invoice no']);
-        $this->addTableCol(['id'=>'quantity_in','type'=>'DECIMAL','title'=>'Quantity received']);
-        $this->addTableCol(['id'=>'quantity_out','type'=>'DECIMAL','title'=>'Quantity delivered']);
+        $access['read_only'] = true;                         
+        $this->modifyAccess($access);
 
+        $this->addTableCol(['id'=>'data_id','type'=>'INTEGER','title'=>'Data ID','key'=>true,'key_auto'=>true,'list'=>false]);
+        $this->addTableCol(['id'=>'store_id','type'=>'INTEGER','title'=>'Store','join'=>'name FROM '.TABLE_PREFIX.'store WHERE store_id']);
+        $this->addTableCol(['id'=>'stock_id','type'=>'INTEGER','title'=>'Stock ID']);
+        $this->addTableCol(['id'=>'item','type'=>'STRING','title'=>'Item','linked'=>'I.name']);
+        $this->addTableCol(['id'=>'quantity','type'=>'DECIMAL','title'=>'Quantity']);
+        $this->addTableCol(['id'=>'units','type'=>'STRING','title'=>'Units','linked'=>'I.units']);
+        $this->addTableCol(['id'=>'supplier','type'=>'STRING','title'=>'Supplier','linked'=>'SU.name']);
+        $this->addTableCol(['id'=>'invoice','type'=>'STRING','title'=>'Invoice','linked'=>'S.invoice_no']);
+        
+        $this->addSql('JOIN','JOIN '.TABLE_PREFIX.'stock AS S ON(T.stock_id = S.stock_id)');
+        $this->addSql('JOIN','JOIN '.TABLE_PREFIX.'item AS I ON(S.item_id = I.item_id)');
+        $this->addSql('JOIN','JOIN '.TABLE_PREFIX.'supplier AS SU ON(S.supplier_id = SU.supplier_id)');
 
-        $this->addSortOrder('T.stock_id DESC','Most recent first','DEFAULT');
+        $this->addSortOrder('T.data_id DESC','Most recent first','DEFAULT');
 
         $this->addAction(['type'=>'edit','text'=>'edit','icon_text'=>'edit']);
         $this->addAction(['type'=>'delete','text'=>'delete','icon_text'=>'delete','pos'=>'R']);
 
-        $this->addSearch(['stock_id','store_id','item_id','supplier_id','invoice_no','quantity'],['rows'=>1]);
+        $this->addSearch(['store_id','stock_id','quantity'],['rows'=>2]);
+        $this->addSearchXtra('I.name','Item');
+        $this->addSearchXtra('SU.name','Supplier');
+        $this->addSearchXtra('S.invoice_no','Invoice');
 
         $this->addSelect('store_id','SELECT store_id, name FROM '.TABLE_PREFIX.'store ORDER BY name');
-        $this->addSelect('item_id','SELECT item_id, name FROM '.TABLE_PREFIX.'item ORDER BY name');
-        $this->addSelect('supplier_id','SELECT supplier_id, name FROM '.TABLE_PREFIX.'supplier ORDER BY name');
+    }
 
+    public function beforeProcess()
+    {
+        if($this->mode == 'list') $this->addMessage('Click Search link below to select Store, Item, Supplier details to find stock for');
     }
 
     /*** EVENT PLACEHOLDER FUNCTIONS ***/

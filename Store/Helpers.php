@@ -68,7 +68,7 @@ class Helpers {
         
         $sql = 'SELECT SS.data_id,SS.quantity '.
                'FROM '.$table_stock_store.' AS SS '.
-               'WHERE stock_id = "'.$db->escapeSql($stock_id).'" AND store_id = "'.$db->escapeSql($store_id).'" ';
+               'WHERE SS.stock_id = "'.$db->escapeSql($stock_id).'" AND SS.store_id = "'.$db->escapeSql($store_id).'" ';
         $record = $db->readSqlRecord($sql);
                      
         return $record;
