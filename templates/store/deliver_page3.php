@@ -6,11 +6,6 @@ $list_param['class'] = 'form-control edit_input';
 $text_param['class'] = 'form-control edit_input';
 $textarea_param['class'] = 'form-control edit_input';
 
-$sql = 'SELECT item_id,CONCAT(name," - ",units) FROM '.TABLE_PREFIX.'item '.
-       'WHERE status <> "HIDE" '.
-       'ORDER BY name';
-$items = $this->db->readSqlList($sql);
-
 $confirm_action = ['NONE'=>'No additional action','EMAIL'=>'Email details to client'];
 
 $button_text = 'CONFIRM delivery details';
@@ -57,7 +52,7 @@ if($form['confirm_email'] == '') $form['confirm_email'] = $data['supplier']['ema
       foreach($data['items'] as $item) {
           
           echo '<tr>'.
-               '<td>'.$items[$item['id']].'</td>'.
+               '<td>'.$item['name'].'</td>'.
                '<td style="text-align:right">'.$item['amount'].'</td>'.
                '<td style="text-align:right">'.number_format($item['price'],2).'</td>'.
                '<td style="text-align:right">'.number_format($item['subtotal'],2).'</td>'.

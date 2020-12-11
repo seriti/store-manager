@@ -14,6 +14,7 @@ $app->group('/admin', function () {
         $this->any('/deliver', App\Store\DeliverController::class);
         $this->any('/deliver_item', App\Store\DeliverItemController::class);
         $this->any('/deliver_wizard', \App\Store\DeliverWizardController::class);
+        $this->any('/deliver_confirm', \App\Store\DeliverConfirmController::class);
         $this->any('/item', \App\Store\ItemController::class);
         $this->any('/item_category', \App\Store\ItemCategoryController::class);
         $this->any('/location', \App\Store\LocationController::class);
@@ -33,11 +34,11 @@ $app->group('/admin', function () {
         $this->any('/transfer', App\Store\TransferController::class);
         $this->any('/transfer_item', App\Store\TransferItemController::class);
         $this->any('/transfer_wizard', App\Store\TransferWizardController::class);
+        $this->any('/user_extend', \App\Store\UserExtendController::class);
 
         $this->any('/dashboard', \App\Store\DashboardController::class);
         $this->any('/setup_dashboard', \App\Store\SetupDashboardController::class);
         $this->get('/setup_data', \App\Store\SetupDataController::class);
-        
     })->add(\App\Store\Config::class);
 
 })->add(\App\User\ConfigAdmin::class);

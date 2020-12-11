@@ -32,12 +32,14 @@ class Config
         
         $menu = $this->container->menu;
         $db = $this->container->mysql;
+        $user = $this->container->user;
         
         define('TABLE_PREFIX',$module['table_prefix']);
         define('MODULE_ID','BUCKET');
         define('MODULE_LOGO','<span class="glyphicon glyphicon-th"></span> ');
         define('MODULE_PAGE',URL_CLEAN_LAST);
 
+        define('ACCESS_RANK',['GOD'=>1,'ADMIN'=>2,'USER'=>5,'VIEW'=>10]);
         define('TAX_RATE',0.15);
         
         $setup_pages = ['location','store','item','item_category','supplier','client'];
@@ -52,11 +54,12 @@ class Config
             $page = MODULE_PAGE;
         }
        
-        define('ACCESS_RANK',['GOD'=>1,'ADMIN'=>2,'USER'=>5,'VIEW'=>10]);
-
-        $submenu_html = $menu->buildNav($module['route_list'],$page).$setup_link;
-        $this->container->view->addAttribute('sub_menu',$submenu_html);
-       
+        //only show module sub menu for users with normal non-route based access
+        if($user->getRouteAccess() === false) {
+            $submenu_html = $menu->buildNav($module['route_list'],$page).$setup_link;
+            $this->container->view->addAttribute('sub_menu',$submenu_html);
+        }
+        
         $response = $next($request, $response);
         
         return $response;

@@ -41,8 +41,9 @@ class Ajax
         if(isset($_GET['mode'])) $mode = Secure::clean('basic',$_GET['mode']);
 
         if($mode === 'supplier_orders') $output = $this->getSupplierOrders($_POST);
+        if($mode === 'deliver_confirm') $output = $this->confirmDeliver($_POST);
 
-        return $output;
+            return $output;
     }
 
     protected function getSupplierOrders($form)
@@ -67,6 +68,47 @@ class Ajax
             $orders = ['0'=>'Select order, or Receive without order'] + $orders;
         }
         $output = json_encode($orders);
+
+        return $output;
+
+    }
+
+    protected function confirmDeliver($form)
+    {
+        $error = '';
+        $error_tmp = '';
+        $html = '';
+        $output = [];
+
+        $deliver = Helpers::get($this->db,$this->table_prefix,'deliver',$form['deliver_id']);
+        if($deliver == 0) {
+            $error .= 'Delivery ID['.$form['deliver_id'].'] is INVALID';
+        } else {
+            if($deliver['status'] === 'INVOICED') $error .= 'Delivery ID['.$form['deliver_id'].'] has already been invoiced.';
+        }
+        
+        //NB: allows for toggle between DELIVERED/NEW
+        if($error === '') {
+            $table_deliver = $this->table_prefix.'deliver';
+            $update = [];
+            $where = ['deliver_id'=>$form['deliver_id']];
+            $update['date'] = date('Y-m-d');
+            //NB: javascript param string converts boolean to string
+            if($form['checked'] === 'true') $update['status'] = 'DELIVERED'; else $update['status'] = 'NEW';
+            $this->db->updateRecord($table_deliver,$update,$where,$error_tmp);
+            if($error_tmp !== '') $error .= 'Could not update elivery status.';
+        }
+                
+        if($error !== '') {
+            $output['errors_found'] = true;
+            $output['error'] = $error;
+        } else {
+            $output['errors_found'] = false;
+            $output['message'] = 'Delivery ID['.$deliver['deliver_id'].'] status set to '.$update['status'].' cgecked:'.$form['checked'];
+            $output['status'] = $update['status'];
+        }    
+  
+        $output = json_encode($output);
 
         return $output;
 

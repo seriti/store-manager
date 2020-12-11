@@ -9,7 +9,7 @@ class SetupData extends SetupModuledata
     public function setupSql()
     {
         $this->tables = ['item','item_category','store','location','supplier','order','order_item','receive','receive_item',
-                         'transfer','transfer_item','client','deliver','deliver_item','stock','stock_store','file'];
+                         'transfer','transfer_item','client','deliver','deliver_item','stock','stock_store','file','user_extend'];
 
         $this->addCreateSql('item',
                             'CREATE TABLE `TABLE_NAME` (
@@ -18,7 +18,9 @@ class SetupData extends SetupModuledata
                                 `name` varchar(64) NOT NULL,
                                 `units` varchar(16) NOT NULL,
                                 `units_kg_convert` decimal(12,2) NOT NULL,
-                                `price` decimal(12,2) NOT NULL,
+                                `price_buy` decimal(12,2) NOT NULL,
+                                `price_sell` decimal(12,2) NOT NULL,
+                                `tax_free` tinyint(1) NOT NULL,
                                 `note` text NOT NULL,
                                 `status` varchar(64) NOT NULL,
                                 PRIMARY KEY (`item_id`) 
@@ -147,7 +149,8 @@ class SetupData extends SetupModuledata
                                 `deliver_id` int(11) NOT NULL AUTO_INCREMENT,
                                 `date` date NOT NULL,
                                 `client_id` int(11) NOT NULL,
-                                `location_id` int(11) NOT NULL,
+                                `store_id` int(11) NOT NULL,
+                                `item_no` int(11) NOT NULL,
                                 `subtotal` decimal(12,2) NOT NULL,
                                 `tax` decimal(12,2) NOT NULL,
                                 `total` decimal(12,2) NOT NULL,
@@ -160,7 +163,6 @@ class SetupData extends SetupModuledata
                             'CREATE TABLE `TABLE_NAME` (
                                 `data_id` int(11) NOT NULL AUTO_INCREMENT,
                                 `deliver_id` int(11) NOT NULL,
-                                `store_id` int(11) NOT NULL,
                                 `stock_id` int(11) NOT NULL,
                                 `quantity` decimal(12,2) NOT NULL,
                                 `price` decimal(12,2) NOT NULL,
@@ -241,6 +243,20 @@ class SetupData extends SetupModuledata
                               PRIMARY KEY (`file_id`),
                               FULLTEXT KEY `search_idx` (`key_words`)
                             ) ENGINE=InnoDB DEFAULT CHARSET=utf8');  
+
+        $this->addCreateSql('user_extend',
+                            'CREATE TABLE `TABLE_NAME` (
+                              `extend_id` INT NOT NULL AUTO_INCREMENT,
+                              `user_id` INT NOT NULL,
+                              `store_id` INT NOT NULL,
+                              `cell` varchar(64) NOT NULL,
+                              `tel` varchar(64) NOT NULL,
+                              `email_alt` varchar(255) NOT NULL,
+                              `address` TEXT NOT NULL,
+                              PRIMARY KEY (`extend_id`),
+                              UNIQUE KEY `idx_store_user1` (`user_id`)
+                            ) ENGINE = MyISAM DEFAULT CHARSET=utf8');
+
 
         //initialisation
         $this->addInitialSql('INSERT INTO `TABLE_PREFIXclient` (name,email,status) '.

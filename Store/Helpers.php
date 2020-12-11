@@ -9,6 +9,7 @@ use Seriti\Tools\Html;
 use Seriti\Tools\Pdf;
 use Seriti\Tools\Doc;
 use Seriti\Tools\Date;
+use Seriti\Tools\DEBUG;
 use Seriti\Tools\STORAGE;
 use Seriti\Tools\SITE_TITLE;
 use Seriti\Tools\BASE_UPLOAD;
@@ -39,6 +40,89 @@ class Helpers {
         return $record;
     } 
 
+    public static function getDeliverConfirm($db,$table_prefix,$store_id,$allow_confirm = false)
+    {
+        $html = '';
+
+        $table_store = $table_prefix.'store';
+        $table_client = $table_prefix.'client';
+        $table_deliver = $table_prefix.'deliver';
+        //$table_item = $table_prefix.'deliver_item';
+        if($store_id === 'ALL') {
+            $store_name = 'ALL stores';
+        } else {
+            $store = Helpers::get($db,$table_prefix,'store',$store_id);
+            $store_name = $store['name'];
+        }
+        $html .= '<h1>Confirm deliveries for: '.$store_name.'</h1>';
+
+        $sql = 'SELECT D.deliver_id,C.name as client,D.item_no,D.total,D.note,S.name AS store '.
+               'FROM '.$table_deliver.' AS D '.
+               'JOIN '.$table_client.' AS C ON(D.client_id = C.client_id) '.
+               'JOIN '.$table_store.' AS S ON(D.store_id = S.store_id) '.
+               'WHERE D.status = "NEW" ';
+        if($store_id !== 'ALL') $sql .= 'AND D.store_id = "'.$db->escapeSql($store_id).'" ';
+                $sql .= 'ORDER BY S.name,D.date ';
+        $deliveries = $db->readSqlArray($sql); 
+        if($deliveries == 0) {
+            $html .= '<h2>There are no deliveries outstanding(status = NEW).</h2>';
+        } else {
+
+            $html .= '<table class="table  table-striped table-bordered table-hover table-condensed">'.
+                     '<tr><th>ID</th><th>Store</th><th>Client</th><th>No items</th><th>Total value</th><th>Delivered</th></tr>';
+            foreach($deliveries as $deliver_id => $deliver) {
+                if($allow_confirm) {
+                    $link = '<input type="checkbox" id="D'.$deliver_id.'" onclick="deliver_update(\''.$deliver_id.'\')" >';
+                } else {
+                    $link = 'Not yet. You cannot update.';
+                }
+                
+                $html .= '<tr id="R'.$deliver_id.'"><td>'.$deliver_id.'</td><td>'.$deliver['store'].'</td><td>'.$deliver['client'].'</td>'.
+                             '<td>'.$deliver['item_no'].'</td><td>'.number_format($deliver['total'],2).'</td>'.
+                             '<td>'.$link.'</td>'.
+                          '</tr>';
+            }
+            $html .= '</table>';
+
+            $html .= '<script type="text/javascript">
+                      //make first month open
+                      var month = $("#collapse_1");
+                      month.addClass("in");
+                      
+                      function deliver_update(deliver_id) {
+                        var row_id = "R"+deliver_id;
+                        var check_id = "D"+deliver_id;
+                        var checkbox = document.getElementById(check_id);
+                        //alert("Delivery"+deliver_id+" value:"+checkbox.checked);
+                        
+                        var param="deliver_id="+deliver_id+"&checked="+checkbox.checked;
+                        var url="ajax?mode=deliver_confirm";
+                        xhr(url,param,update_handler,row_id)
+                         
+                      }
+                      function update_handler(str,row_id) {
+                         var row = document.getElementById(row_id);
+
+                         var response = JSON.parse(str);
+                         if(response.errors_found) {
+                           alert("ERROR:"+response.error);
+                           row.style.backgroundColor = "red";
+                         } else {
+                           //alert(response.message); 
+                           if(response.status == "DELIVERED") {
+                             row.style.backgroundColor = "lime";     
+                           } else {
+                             row.style.backgroundColor = "white";   
+                           }
+                            
+                         }  
+                      }
+                      </script>';
+        } 
+
+        return $html;     
+    }
+
     public static function getStockItem($db,$table_prefix,$stock_id) 
     {
         $table_stock = $table_prefix.'stock';
@@ -46,7 +130,7 @@ class Helpers {
         $table_item = $table_prefix.'item';
         $table_category = $table_prefix.'item_category';
         
-        $sql = 'SELECT S.supplier_id,S.invoice_no,S.quantity_in,S.quantity_in,'.
+        $sql = 'SELECT S.supplier_id,S.invoice_no,S.quantity_in,S.quantity_out,'.
                       'SU.name as supplier,I.name,I.units,I.units_kg_convert,C.name AS category,C.access,C.access_level '.
                'FROM '.$table_stock.' AS S '.
                      'JOIN '.$table_supplier.' AS SU ON(S.supplier_id = SU.supplier_id) '.
@@ -74,20 +158,39 @@ class Helpers {
         return $record;
     }
 
+    //NB: uses stock_store data_id generally from form select lists
+    public static function getStockInStoreId($db,$table_prefix,$data_id) 
+    {
+        $table_stock = $table_prefix.'stock';
+        $table_stock_store = $table_prefix.'stock_store';
+                
+        $sql = 'SELECT SS.data_id,SS.store_id,SS.stock_id,SS.quantity,S.item_id '.
+               'FROM '.$table_stock_store.' AS SS JOIN '.$table_stock.' AS S ON(SS.stock_id = S.stock_id)'.
+               'WHERE SS.data_id = "'.$db->escapeSql($data_id).'" ';
+        $record = $db->readSqlRecord($sql);
+                     
+        return $record;
+    }
+
     //check if can update an order
-    public static function verifyOrderItemUpdate($db,$table_prefix,$type,$item_id,$update = [],&$error)
+    public static function verifyOrderItemUpdate($db,$table_prefix,$update_type,$order_id,$item_id,$update = [],&$error)
     {
         $error = '';
         
-        $item = self::get($db,$table_prefix,'order_item',$item_id,'data_id');
-        if($item == 0) {
-            $error .= 'Order item ID['.$item_id.'] invalid';
-        } else {
-            $order = self::get($db,$table_prefix,'order',$item['order_id']);
-            if($order['status'] !== 'NEW') {
-                $error .= 'Cannot update item as order status['.$order['status'].'] is not NEW ';
-            }
+        $order = self::get($db,$table_prefix,'order',$order_id);
+        if($order['status'] !== 'NEW') {
+            $error .= 'Cannot update item as order status['.$order['status'].'] is not NEW ';
         }
+
+        if($update_type !== 'INSERT') {
+            $item = self::get($db,$table_prefix,'order_item',$item_id,'data_id');
+            if($item == 0) {
+                $error .= 'Order item ID['.$item_id.'] invalid';
+            } else {
+                
+            }    
+        }
+        
 
         if($error === '') return true; else return false;
     }
@@ -118,28 +221,25 @@ class Helpers {
     }
 
     //check if can update a reception, and process required stock updates 
-    public static function receiveItemUpdate($db,$table_prefix,$update_type,$data_id,$update = [],&$error)
+    public static function receiveItemUpdate($db,$table_prefix,$update_type,$receive_id,$data_id,$update = [],&$error)
     {
         $error = '';
         $error_tmp = '';
-        
-        $item = self::get($db,$table_prefix,'receive_item',$data_id,'data_id');
-        if($item == 0) {
-            $error .= 'Reception item ID['.$item_id.'] invalid';
-        } else {
-            $receive = self::get($db,$table_prefix,'receive',$item['receive_id']);
-            if($receive['status'] !== 'NEW') {
-                $error .= 'Cannot update item as reception status['.$receive['status'].'] is not NEW ';
-            }
-        }
 
+        $receive = self::get($db,$table_prefix,'receive',$receive_id);
+        if($receive['status'] !== 'NEW') {
+            $error .= 'Cannot update item as reception status['.$receive['status'].'] is not NEW ';
+        }
+    
         //reverse original quantity
         if($error === '' and ($update_type === 'UPDATE' or $update_type === 'DELETE')) {
+            $item = self::get($db,$table_prefix,'receive_item',$data_id,'data_id');
             $quantity = $item['quantity'] * -1;
+            
             self::updateStockReceived($db,$table_prefix,$item['item_id'],$receive['supplier_id'],$receive['invoice_no'],$quantity,$item['store_id'],$error_tmp);
             if($error_tmp !== '') {
                 $error .= 'Could not reverse original quantity received. ';
-                if($this->debug) $error .= $error_tmp;
+                if(DEBUG) $error .= $error_tmp;
             }
         }    
 
@@ -148,7 +248,7 @@ class Helpers {
             self::updateStockReceived($db,$table_prefix,$update['item_id'],$receive['supplier_id'],$receive['invoice_no'],$update['quantity'],$update['store_id'],$error_tmp);
             if($error_tmp !== '') {
                 $error .= 'Could not update changed item stock. ';
-                if($this->debug) $error .= $error_tmp;
+                if(DEBUG) $error .= $error_tmp;
             }  
         }
    
@@ -267,7 +367,68 @@ class Helpers {
         if($error !== '') return false; else return true;
     }
 
-    //NB: make quantity negative to REVERSE item delivery
+    //check if can update a reception, and process required stock updates 
+    public static function deliverItemUpdate($db,$table_prefix,$update_type,$deliver_id,$data_id,$update = [],&$error)
+    {
+        $error = '';
+        $error_tmp = '';
+        
+        $deliver = self::get($db,$table_prefix,'deliver',$deliver_id);
+        if($deliver['status'] !== 'NEW') {
+            $error .= 'Cannot update item as deliver status['.$deliver['status'].'] is not NEW ';
+        }
+                
+        //reverse original quantity
+        if($error === '' and ($update_type === 'UPDATE' or $update_type === 'DELETE')) {
+            $item = self::get($db,$table_prefix,'deliver_item',$data_id,'data_id');
+            $quantity = $item['quantity'] * -1;
+
+            self::updateStockDelivered($db,$table_prefix,$deliver['store_id'],$item['stock_id'],$quantity,$error_tmp);
+            if($error_tmp !== '') {
+                $error .= 'Could not reverse original quantity received. ';
+                if(DEBUG) $error .= $error_tmp;
+            }
+        }    
+
+        //update new value if not a delete
+        if($error === '' and ($update_type === 'UPDATE' or $update_type === 'INSERT')) {
+            self::updateStockDelivered($db,$table_prefix,$deliver['store_id'],$update['stock_id'],$update['quantity'],$error_tmp);
+            if($error_tmp !== '') {
+                $error .= 'Could not update changed item stock. ';
+                if(DEBUG) $error .= $error_tmp;
+            }  
+        }
+   
+
+        if($error === '') return true; else return false;
+    }
+
+    //update delivery totals after item update
+    public static function updateDeliver($db,$table_prefix,$receive_id,&$error)
+    {
+        $error = '';
+        $output = [];
+        
+        $table_deliver = $table_prefix.'deliver';
+        $table_item = $table_prefix.'deliver_item';
+        
+        $sql = 'SELECT COUNT(*) AS item_no,SUM(subtotal) AS subtotal,SUM(tax) AS tax,SUM(total) AS total '.
+               'FROM '.$table_item.'  '.
+               'WHERE deliver_id = "'.$db->escapeSql($deliver_id).'" ';
+        $totals = $db->readSqlRecord($sql);
+                
+        $sql = 'UPDATE '.$table_deliver.'  '.
+               'SET item_no = "'.$totals['item_no'].'", '.
+                   'subtotal = "'.$totals['subtotal'].'", '.
+                   'tax = "'.$totals['tax'].'", '.
+                   'total =  "'.$totals['total'].'" '.
+               'WHERE deliver_id = "'.$db->escapeSql($deliver_id).'" ';
+        $db->executeSql($sql,$error);
+        
+        if($error !== '') return false; else return true;
+    }
+
+    //NB: make quantity negative to REVERSE item delivery, $data_id 
     public static function updateStockDelivered($db,$table_prefix,$store_id,$stock_id,$quantity,&$error)
     {
         $error = '';
@@ -284,37 +445,33 @@ class Helpers {
         //NB: negative quantity is so can process reversals of stock delivered
         if($quantity < 0) $reversal = true; else $reversal = false;
 
-        
-        //first update-insert primary stock table
+        //first update primary stock table
         $sql = 'SELECT stock_id,item_id,quantity_in,quantity_out  '.
                'FROM '.$table_stock.'  '.
                'WHERE stock_id = "'.$db->escapeSql($stock_id).'" ';
         $stock = $db->readSqlRecord($sql);
-        //update existing stock record
         if($stock == 0) {
-            $error .= 'Zero stock exists, so cannote deliver['.$quantity.'] ' ;
-        } else {    
-            $stock_id = $stock['stock_id'];
-
-            if(!$reversal and $stock['quantity_in'] < abs($quantity)) {
-                $error .= 'Stock quantity available['.$stock['quantity_in'].'] is less than delivery quantity['.$quantity.'] ' ;
+            $error .= 'Stock ID['.$stock_id.'] does not exist, so cannote deliver['.$quantity.'] ' ;
+        } else { 
+            $available = $stock['quantity_in'] - $stock['quantity_out'];  
+            if(!$reversal and $available < abs($quantity)) {
+                $error .= 'Stock quantity available['.$available.'] is less than delivery quantity['.$quantity.'] ' ;
             } else {
-                $sql = 'UPDATE '.$table_stock.' SET quantity_in = quantity_in - '.$quantity.' '.
-                       'WHERE stock_id = "'.$stock_id.'" ';
+                $sql = 'UPDATE '.$table_stock.' SET quantity_out = quantity_out + '.$quantity.' '.
+                       'WHERE stock_id = "'.$stock['stock_id'].'" ';
                 $db->executeSql($sql,$error_tmp);
                 if($error_tmp !== '') $error .= 'Could not update existing stock delivered levels.';
             }
-        }    
-        
-        //now update stock store linkage
+        }
+      
+        //now update store stock table
         if($error === '') {
-            $sql = 'SELECT data_id,stock_id,quantity '.
+            $sql = 'SELECT data_id,stock_id,store_id,quantity '.
                    'FROM '.$table_stock_store.' '.
                    'WHERE store_id = "'.$db->escapeSql($store_id).'" AND stock_id = "'.$db->escapeSql($stock_id).'" ';
             $stock_store = $db->readSqlRecord($sql);
-
             if($stock_store == 0) {
-                $error .= 'Zero store stock exists, so cannote deliver['.$quantity.'] from store' ;
+                $error .= 'Zero store['.$store_id.'] stock['.$stock_id.'] exists, so cannote deliver['.$quantity.'] from store' ;
             } else {    
                 if(!$reversal and $stock_store['quantity'] < abs($quantity)) {
                    $error .= 'Stock quantity available in store['.$stock_store['quantity'].'] cannot be less than delivery quantity['.$quantity.'] ' ;
@@ -325,34 +482,32 @@ class Helpers {
                     if($error_tmp !== '') $error .= 'Could not update existing stock store levels.';
                 }
             } 
-        }
+        }        
+
         
         if($error !== '') return false; else return true;
     }
 
     //check if can update a transfer
-    public static function transferItemUpdate($db,$table_prefix,$update_type,$item_id,$update = [],&$error)
+    public static function transferItemUpdate($db,$table_prefix,$update_type,$transfer_id,$item_id,$update = [],&$error)
     {
         $error = '';
         
-        $item = self::get($db,$table_prefix,'transfer_item',$item_id,'data_id');
-        if($item == 0) {
-            $error .= 'Transfer item ID['.$item_id.'] invalid';
-        } else {
-            $transfer = self::get($db,$table_prefix,'transfer',$item['transfer_id']);
-            if($transfer['status'] !== 'NEW') {
-                $error .= 'Cannot update item as transfer status['.$transfer['status'].'] is not NEW ';
-            }
+        $transfer = self::get($db,$table_prefix,'transfer',$transfer_id);
+        if($transfer['status'] !== 'NEW') {
+            $error .= 'Cannot update item as transfer status['.$transfer['status'].'] is not NEW ';
         }
-
+      
         //reverse original transfer
         if($error === '' and ($update_type === 'UPDATE' or $update_type === 'DELETE')) {
+            $item = self::get($db,$table_prefix,'transfer_item',$item_id,'data_id');
             $from_store_id = $transfer['to_store_id'];
             $to_store_id = $transfer['from_store_id'];
+
             self::updateStockTransfered($db,$table_prefix,$from_store_id,$to_store_id,$item['stock_id'],$item['quantity'],$error_tmp);
             if($error_tmp !== '') {
                 $error .= 'Could not reverse original quantity transfered. ';
-                if($this->debug) $error .= $error_tmp;
+                if(DEBUG) $error .= $error_tmp;
             }
         }    
 
@@ -361,7 +516,7 @@ class Helpers {
             self::updateStockTransfered($db,$table_prefix,$transfer['from_store_id'],$transfer['to_store_id'],$update['stock_id'],$update['quantity'],$error_tmp);
             if($error_tmp !== '') {
                 $error .= 'Could not update changed item stock. ';
-                if($this->debug) $error .= $error_tmp;
+                if(DEBUG) $error .= $error_tmp;
             }  
         }
    

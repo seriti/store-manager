@@ -15,8 +15,8 @@ class TransferItem extends Table
         $param = ['row_name'=>'Transfer item','col_label'=>'stock_id','pop_up'=>true];
         parent::setup($param);
 
-        //NB: must use wizard to add items but can do from here
-        $this->modifyAccess(['add'=>false,'edit']);
+        //NB: should use wizard to add items but can do from here
+        //$this->modifyAccess(['add'=>false,'edit']);
 
         $this->setupMaster(['table'=>TABLE_PREFIX.'transfer','key'=>'transfer_id','child_col'=>'transfer_id',
                             'show_sql'=>'SELECT CONCAT("Transfer ID[",transfer_id,"] ",date) FROM '.TABLE_PREFIX.'transfer WHERE transfer_id = "{KEY_VAL}" ']);
@@ -65,12 +65,15 @@ class TransferItem extends Table
     /*** EVENT PLACEHOLDER FUNCTIONS ***/
     protected function beforeUpdate($id,$context,&$data,&$error) 
     {
+        $error_tmp = '';
+        $transfer_id = $this->master['key_val'];
+
         $this->db->executeSql('START TRANSACTION',$error_tmp);
 
         if($error_tmp !== '') {
             $error .= 'Could not initiate '.$context.' transaction';
         } else {
-            Helpers::transferItemUpdate($this->db,TABLE_PREFIX,'UPDATE',$id,$data,$error);
+            Helpers::transferItemUpdate($this->db,TABLE_PREFIX,$context,$transfer_id,$id,$data,$error);
         }
         
         if($error !== '') {
@@ -89,13 +92,16 @@ class TransferItem extends Table
     
     protected function beforeDelete($id,&$error) 
     {
+        $error_tmp = '';
+        $transfer_id = $this->master['key_val'];
+
         $this->db->executeSql('START TRANSACTION',$error_tmp);
 
         if($error_tmp !== '') {
             $error .= 'Could not initiate '.$context.' transaction';
         } else {
             $data = [];
-            Helpers::transferItemUpdate($this->db,TABLE_PREFIX,'DELETE',$id,$data,$error);
+            Helpers::transferItemUpdate($this->db,TABLE_PREFIX,'DELETE',$transfer_id,$id,$data,$error);
         }
         
         if($error !== '') {

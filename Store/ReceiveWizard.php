@@ -124,7 +124,7 @@ class ReceiveWizard extends Wizard
             $store_id = $this->form['store_id'];
             $this->data['store'] = Helpers::get($this->db,TABLE_PREFIX,'store',$store_id);
            
-            //get item list for validation and messages
+            //get item list for validation, messages, templates
             $sql = 'SELECT item_id,name FROM '.TABLE_PREFIX.'item '.
                    'WHERE status <> "HIDE" '.
                    'ORDER BY name';
@@ -135,7 +135,7 @@ class ReceiveWizard extends Wizard
             $amount_max = 10000000; 
             $price_min = 0.01;
             $price_max = 10000000; 
-            $total_min = 10.00;
+            $total_min = 1.00;
             $total_max = 100000000; 
             $subtotal = 0;
             $tax = 0;
@@ -165,27 +165,29 @@ class ReceiveWizard extends Wizard
                     $item['subtotal'] = abs($_POST[$subtotal_id]);
                     $item['tax'] = abs($_POST[$tax_id]);
                     $item['total'] = abs($_POST[$total_id]);
+                    //save additional item details for messages and templates
+                    $item['name'] = $items[$item['id']];
 
                     if(!is_numeric($item['id']) or !isset($items[$item['id']])) {
                         $this->addError('Invalid Item ID['.$item['id'].']');
                     } else {
-                        $item_desc = $items[$item['id']].' - amount';
+                        $item_desc = $item['name'].' - amount';
                         Validate::number($item_desc,$amount_min,$amount_max,$item['amount'],$error_str);
                         if($error_str !== '') $this->addError($error_str);
 
-                        $item_desc = $items[$item['id']].' - price';
+                        $item_desc = $item['name'].' - price';
                         Validate::number($item_desc,$price_min,$price_max,$item['price'],$error_str);
                         if($error_str !== '') $this->addError($error_str);
 
-                        $item_desc = $items[$item['id']].' - subtotal';
+                        $item_desc = $item['name'].' - subtotal';
                         Validate::number($item_desc,$total_min,$total_max,$item['subtotal'],$error_str);
                         if($error_str !== '') $this->addError($error_str);
 
-                        $item_desc = $items[$item['id']].' - tax';
+                        $item_desc = $item['name'].' - tax';
                         Validate::number($item_desc,$total_min,$total_max,$item['tax'],$error_str);
                         if($error_str !== '') $this->addError($error_str);
 
-                        $item_desc = $items[$item['id']].' - total';
+                        $item_desc = $item['name'].' - total';
                         Validate::number($item_desc,$total_min,$total_max,$item['total'],$error_str);
                         if($error_str !== '') $this->addError($error_str);
                         
@@ -194,13 +196,13 @@ class ReceiveWizard extends Wizard
                         $calc_total = $item['subtotal'] + $item['tax'];
 
                         if(abs($calc_subtotal - $item['subtotal']) > $calc_error)  {
-                            $this->addError($items[$item['id']].' calculated subtotal['.$calc_subtotal.'] NOT = input['.$item['subtotal'].']');
+                            $this->addError($item['name'].' calculated subtotal['.$calc_subtotal.'] NOT = input['.$item['subtotal'].']');
                         }
                         if(abs($calc_tax - $item['tax']) > $calc_error)  {
-                            $this->addError($items[$item['id']].' calculated tax['.$calc_tax.'] NOT = input['.$item['tax'].']');
+                            $this->addError($item['name'].' calculated tax['.$calc_tax.'] NOT = input['.$item['tax'].']');
                         }
                         if(abs($calc_total - $item['total']) > $calc_error)  {
-                            $this->addError($items[$item['id']].' calculated total['.$calc_total.'] NOT = input['.$item['total'].' ]');
+                            $this->addError($item['name'].' calculated total['.$calc_total.'] NOT = input['.$item['total'].' ]');
                         }
 
                         
@@ -306,10 +308,19 @@ class ReceiveWizard extends Wizard
                 if($error_tmp !== '') $this->addError('Could not COMMIT transaction');
             }
 
+            //update order if necessary
+            if(!$this->errors_found) {
+                if($this->data['order'] !== 0) {
+                    $order_id = $this->data['order']['order_id'];
+                    $sql = 'UPDATE '.TABLE_PREFIX.'order SET status = "RECEIVED" '.
+                           'WHERE order_id = "'.$order_id.'" ';
+                    $this->db->executeSql($sql,$error_tmp); 
+                    if($error_tmp !== '') $this->addError('Could not update Order ID['.$order_id.'] status = RECEIVED');      
+                }
+            }    
 
             //finally SETUP payment gateway form if that option requested, or email EFT instructions
             if(!$this->errors_found) {
-                
                 /*
                 if($this->form['confirm_action'] === 'EMAIL') {
                     

@@ -40,7 +40,8 @@ class OrderItem extends Table
     /*** EVENT PLACEHOLDER FUNCTIONS ***/
     protected function beforeUpdate($id,$context,&$data,&$error) 
     {
-        Helpers::verifyOrderItemUpdate($this->db,TABLE_PREFIX,'UPDATE',$id,$data,$error);
+        $order_id = $this->master['key_val'];
+        Helpers::verifyOrderItemUpdate($this->db,TABLE_PREFIX,$context,$order_id,$id,$data,$error);
     }
 
     protected function afterUpdate($id,$context,$data) 
@@ -51,8 +52,9 @@ class OrderItem extends Table
 
     protected function beforeDelete($id,&$error) 
     {
+        $order_id = $this->master['key_val'];
         $data = [];
-        Helpers::verifyOrderItemUpdate($this->db,TABLE_PREFIX,'DELETE',$id,$data,$error);
+        Helpers::verifyOrderItemUpdate($this->db,TABLE_PREFIX,'DELETE',$order_id,$id,$data,$error);
     }
 
     protected function afterDelete($id) 

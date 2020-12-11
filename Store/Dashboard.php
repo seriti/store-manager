@@ -20,9 +20,13 @@ class Dashboard extends DashboardTool
         $this->addItem('ADD','Receive stock',['link'=>'receive_wizard']);
         $this->addItem('ADD','Transfer stock',['link'=>'transfer_wizard']);
         $this->addItem('ADD','Deliver stock',['link'=>'deliver_wizard']);
+
+        $this->addBlock('PROCESS',2,1,'View in process data');
+        $this->addItem('PROCESS','Deliveries in process',['link'=>'deliver_confirm']);
         
         if($login_user->getAccessLevel() === 'GOD') {
             $this->addBlock('CONFIG',1,2,'Module Configuration');
+            $this->addItem('CONFIG','Store User settings',['link'=>'user_extend','icon'=>'setup']);
             $this->addItem('CONFIG','Setup Defaults',['link'=>'setup','icon'=>'setup']);
             $this->addItem('CONFIG','Setup Database',['link'=>'setup_data','icon'=>'setup']);
         }    

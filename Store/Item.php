@@ -28,7 +28,9 @@ class Item extends Table
         $this->addTableCol(array('id'=>'category_id','type'=>'INTEGER','title'=>'Category','join'=>'name FROM '.TABLE_PREFIX.'item_category WHERE category_id'));
         $this->addTableCol(array('id'=>'units','type'=>'STRING','title'=>'Units','new'=>'Kg'));
         $this->addTableCol(array('id'=>'units_kg_convert','type'=>'DECIMAL','title'=>'Units convert to Kg','new'=>'1'));
-        $this->addTableCol(array('id'=>'price','type'=>'DECIMAL','title'=>'Price','new'=>0));
+        $this->addTableCol(array('id'=>'price_buy','type'=>'DECIMAL','title'=>'Cost Price','new'=>0));
+        $this->addTableCol(array('id'=>'price_sell','type'=>'DECIMAL','title'=>'Sale Price','new'=>0));
+        $this->addTableCol(array('id'=>'tax_free','type'=>'BOOLEAN','title'=>'Tax free','new'=>0));
         $this->addTableCol(array('id'=>'note','type'=>'TEXT','title'=>'Notes','required'=>false));
         $this->addTableCol(array('id'=>'status','type'=>'STRING','title'=>'Status'));
 

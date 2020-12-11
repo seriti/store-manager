@@ -42,6 +42,7 @@ if(!isset($data['item_count'])) $data['item_count'] = 0;
     <h1>Deliver stock items: <a href="javascript:add_item()">[add]</a></h1>
     <?php 
     //NB: item_id refers to SS.data_id and NOT original S.item_id
+    //NB: could use SS.stock_id as UNIQUE for a given store
     $sql_item = 'SELECT SS.data_id,CONCAT(C.name,": ",I.name,"(",SU.name," - ",S.invoice_no,") ",SS.quantity,I.units," available") '.
                 'FROM '.TABLE_PREFIX.'stock_store AS SS JOIN '.TABLE_PREFIX.'stock AS S ON(SS.stock_id = S.stock_id) '.
                       'JOIN '.TABLE_PREFIX.'supplier AS SU ON(S.supplier_id = SU.supplier_id) '.

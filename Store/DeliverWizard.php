@@ -88,7 +88,7 @@ class DeliverWizard extends Wizard
                         $this->data['sale'] = $sale['sale'];
 
                         $items = [];
-                        //NB: *** will need to convert from sale item_id to selected store stock_id ****
+                        //NB: *** will need to convert from sale item_id to selected store stock data_id ****
                         foreach($sale['items'] AS $sale_item) {
                             $item = [];
                             $item['id'] = $sale_item['item_id'];
@@ -118,11 +118,8 @@ class DeliverWizard extends Wizard
         
         //process all delivery items and calculate totals
         if($this->page_no == 2) {
-
-            $store_id = $this->form['store_id'];
-            $this->data['store'] = Helpers::get($this->db,TABLE_PREFIX,'store',$store_id);
-           
-            //get item list for validation and messages
+            
+            //get item list for validation, messages, templates
             $sql = 'SELECT item_id,name FROM '.TABLE_PREFIX.'item '.
                    'WHERE status <> "HIDE" '.
                    'ORDER BY name';
@@ -133,7 +130,7 @@ class DeliverWizard extends Wizard
             $amount_max = 10000000; 
             $price_min = 0.01;
             $price_max = 10000000; 
-            $total_min = 10.00;
+            $total_min = 1.00;
             $total_max = 100000000; 
             $subtotal = 0;
             $tax = 0;
@@ -146,6 +143,7 @@ class DeliverWizard extends Wizard
             //reset items
             $this->data['items'] = [];
             for($i = 1; $i <= $item_count; $i++) {
+                //NB: item_id refers to stock_store.data_id
                 $item_id = 'item_'.$i;
                 $amount_id = 'amount_'.$i;
                 $price_id = 'price_'.$i;
@@ -155,8 +153,7 @@ class DeliverWizard extends Wizard
                 if(isset($_POST[$item_id])) {
                     $n++;
                     $item = [];
-                    $item['store_id'] = $store_id;
-
+                    
                     $item['id'] = $_POST[$item_id];
                     $item['amount'] = abs($_POST[$amount_id]);
                     $item['price'] = abs($_POST[$price_id]);
@@ -164,26 +161,36 @@ class DeliverWizard extends Wizard
                     $item['tax'] = abs($_POST[$tax_id]);
                     $item['total'] = abs($_POST[$total_id]);
 
-                    if(!is_numeric($item['id']) or !isset($items[$item['id']])) {
-                        $this->addError('Invalid Item ID['.$item['id'].']');
+                    //save additional item details
+                    $stock = Helpers::getStockInStoreId($this->db,TABLE_PREFIX,$item['id']);
+                    $item['stock_id'] = $stock['stock_id'];
+                    $item['item_id'] = $stock['item_id'];
+                    $item['name'] = $items[$item['id']];
+
+                    if($stock['store_id'] !== $this->form['store_id']) {
+                       $this->addError('Stock Store Item ID['.$item['id'].'] has INVALID store ID['.$stock['store_id'].'] NOT same as delivery store ID['.$this->form['store_id'].']'); 
+                    }
+
+                    if(!is_numeric($item['id']) or !isset($items[$item['item_id']])) {
+                        $this->addError('Invalid Stock Store Item ID['.$item['id'].']');
                     } else {
-                        $item_desc = $items[$item['id']].' - amount';
+                        $item_desc = $item['name'].' - amount';
                         Validate::number($item_desc,$amount_min,$amount_max,$item['amount'],$error_str);
                         if($error_str !== '') $this->addError($error_str);
 
-                        $item_desc = $items[$item['id']].' - price';
+                        $item_desc = $item['name'].' - price';
                         Validate::number($item_desc,$price_min,$price_max,$item['price'],$error_str);
                         if($error_str !== '') $this->addError($error_str);
 
-                        $item_desc = $items[$item['id']].' - subtotal';
+                        $item_desc = $item['name'].' - subtotal';
                         Validate::number($item_desc,$total_min,$total_max,$item['subtotal'],$error_str);
                         if($error_str !== '') $this->addError($error_str);
 
-                        $item_desc = $items[$item['id']].' - tax';
+                        $item_desc = $item['name'].' - tax';
                         Validate::number($item_desc,$total_min,$total_max,$item['tax'],$error_str);
                         if($error_str !== '') $this->addError($error_str);
 
-                        $item_desc = $items[$item['id']].' - total';
+                        $item_desc = $item['name'].' - total';
                         Validate::number($item_desc,$total_min,$total_max,$item['total'],$error_str);
                         if($error_str !== '') $this->addError($error_str);
                         
@@ -192,13 +199,13 @@ class DeliverWizard extends Wizard
                         $calc_total = $item['subtotal'] + $item['tax'];
 
                         if(abs($calc_subtotal - $item['subtotal']) > $calc_error)  {
-                            $this->addError($items[$item['id']].' calculated subtotal['.$calc_subtotal.'] NOT = input['.$item['subtotal'].']');
+                            $this->addError($item['name'].' calculated subtotal['.$calc_subtotal.'] NOT = input['.$item['subtotal'].']');
                         }
                         if(abs($calc_tax - $item['tax']) > $calc_error)  {
-                            $this->addError($items[$item['id']].' calculated tax['.$calc_tax.'] NOT = input['.$item['tax'].']');
+                            $this->addError($item['name'].' calculated tax['.$calc_tax.'] NOT = input['.$item['tax'].']');
                         }
                         if(abs($calc_total - $item['total']) > $calc_error)  {
-                            $this->addError($items[$item['id']].' calculated total['.$calc_total.'] NOT = input['.$item['total'].' ]');
+                            $this->addError($item['name'].' calculated total['.$calc_total.'] NOT = input['.$item['total'].' ]');
                         }
 
                         
@@ -239,9 +246,9 @@ class DeliverWizard extends Wizard
 
                 $deliver = [];
                 $deliver['client_id'] = $this->form['client_id'];
-                $deliver['location_id'] = $this->form['location_id'];
+                $deliver['store_id'] = $this->form['store_id'];
                 //$deliver['sale_id'] = $this->form['sale_id'];
-                //$deliver['item_no'] = $this->data['item_count'];
+                $deliver['item_no'] = $this->data['item_count'];
                 $deliver['date'] = date('Y-m-d');
                 $deliver['subtotal'] = $this->data['item_subtotal'];
                 $deliver['tax'] = $this->data['item_tax'];
@@ -261,20 +268,15 @@ class DeliverWizard extends Wizard
                 $this->data['deliver_id'] = $deliver_id;
                 //NB: item['id'] is stock_id in the store
                 foreach($this->data['items'] as $item) {
-                    //NB: $item['id'] is NOT stock_id
-                    $stock = Helpers::get($this->db,TABLE_PREFIX,'stock_store',$item['id'],'data_id');
-
                     $deliver_item = [];
                     $deliver_item['deliver_id'] = $deliver_id;
-                    $deliver_item['store_id'] = $stock['store_id'];
-                    $deliver_item['stock_id'] = $stock['stock_id'];
+                    $deliver_item['stock_id'] = $item['stock_id'];
                     $deliver_item['quantity'] = $item['amount'];
                     $deliver_item['price'] = $item['price']; 
                     $deliver_item['subtotal'] = $item['subtotal'];
                     $deliver_item['tax'] = $item['tax'];
                     $deliver_item['total'] = $item['total'];
                     
-
                     $this->db->insertRecord($table_deliver_item,$deliver_item,$error_tmp);
                     if($error_tmp !== '') {
                         $error .= 'We could not save reception item['.$item['id'].']';
@@ -282,13 +284,10 @@ class DeliverWizard extends Wizard
                         $this->addError($error);
                     }
 
-                    Helpers::updateStockDelivered($this->db,TABLE_PREFIX,
-                                                  $deliver_item['store_id'],
-                                                  $deliver_item['stock_id'],
-                                                  $deliver_item['quantity'],
-                                                  $error_tmp);
+                    //NB: $item['id'] links to stock_store store_id and stock_id
+                    Helpers::updateStockDelivered($this->db,TABLE_PREFIX,$deliver['store_id'],$item['stock_id'],$deliver_item['quantity'],$error_tmp);
                     if($error_tmp !== '') {
-                        $error .= 'We could not update stock item['.$deliver_item['stock_id'].']';
+                        $error .= 'We could not update stock store item['.$item['id'].']';
                         if($this->debug) $error .= $error_tmp;
                         $this->addError($error);
                     }

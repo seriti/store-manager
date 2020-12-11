@@ -45,13 +45,14 @@ class ReceiveItem extends Table
     protected function beforeUpdate($id,$context,&$data,&$error) 
     {
         $error_tmp = '';
+        $receive_id = $this->master['key_val'];
 
         $this->db->executeSql('START TRANSACTION',$error_tmp);
 
         if($error_tmp !== '') {
             $error .= 'Could not initiate '.$context.' transaction';
         } else {
-            Helpers::receiveItemUpdate($this->db,TABLE_PREFIX,$context,$id,$data,$error);
+            Helpers::receiveItemUpdate($this->db,TABLE_PREFIX,$context,$receive_id,$id,$data,$error);
         }
 
         if($error !== '') {
@@ -70,13 +71,16 @@ class ReceiveItem extends Table
     
     protected function beforeDelete($id,&$error) 
     {
+        $error_tmp = '';
+        $receive_id = $this->master['key_val'];
+
         $this->db->executeSql('START TRANSACTION',$error_tmp);
 
         if($error_tmp !== '') {
             $error .= 'Could not initiate DELETE transaction';
         } else {
             $data = [];
-            Helpers::receiveItemUpdate($this->db,TABLE_PREFIX,'DELETE',$id,$data,$error);
+            Helpers::receiveItemUpdate($this->db,TABLE_PREFIX,'DELETE',$receive_id,$id,$data,$error);
         }
 
         if($error !== '') {

@@ -81,7 +81,7 @@ class OrderWizard extends Wizard
         //process all order items and calculate totals
         if($this->page_no == 2) {
 
-            //get item list for validation and messages
+            //get item list for validation, messages, templates
             $sql = 'SELECT item_id,name FROM '.TABLE_PREFIX.'item '.
                    'WHERE status <> "HIDE" '.
                    'ORDER BY name';
@@ -110,14 +110,17 @@ class OrderWizard extends Wizard
                     $item['id'] = $_POST[$item_id];
                     $item['amount'] = abs($_POST[$amount_id]);
                     $item['price'] = abs($_POST[$price_id]);
+                    //save additional item details for messages and templates
+                    $item['name'] = $items[$item['id']];
+
                     if(!is_numeric($item['id']) or !isset($items[$item['id']])) {
                         $this->addError('Invalid Item ID['.$item['id'].']');
                     } else {
-                        $item_desc = $items[$item['id']].' - amount';
+                        $item_desc = $item['name'].' - amount';
                         Validate::number($item_desc,$amount_min,$amount_max,$item['amount'],$error_str);
                         if($error_str !== '') $this->addError($error_str);
 
-                        $item_desc = $items[$item['id']].' - price';
+                        $item_desc = $item['name'].' - price';
                         Validate::number($item_desc,$price_min,$price_max,$item['price'],$error_str);
                         if($error_str !== '') $this->addError($error_str);
 
