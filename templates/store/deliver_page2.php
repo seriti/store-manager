@@ -100,12 +100,14 @@ $html_item = Form::sqlList($sql_item,$this->db,'item_id',$item_id,$item_param);
 $js .= 'var item_count = '.$data['item_count'].';';
 
 $js .= 'var html_item = \''.$html_item.'\';';
+
+$js .= 'var tax_rate = '.TAX_RATE.';';
                        
 echo $js;        
 
 ?>
-var html_amount = '<input type="text" id="amount_id" name="amount_id" class="form-control">';
-var html_price = '<input type="text" id="price_id" name="price_id" class="form-control">';
+var html_amount = '<input type="text" id="amount_id" name="amount_id" class="form-control" onchange="javascript:calc_total()">';
+var html_price = '<input type="text" id="price_id" name="price_id" class="form-control" onchange="javascript:calc_total()">';
 var html_subtotal = '<input type="text" id="subtotal_id" name="subtotal_id" class="form-control">';
 var html_tax = '<input type="text" id="tax_id" name="tax_id" class="form-control">';
 var html_total = '<input type="text" id="total_id" name="total_id" class="form-control">';
@@ -166,5 +168,56 @@ function delete_row(link) {
     row.parentNode.removeChild(row);
 };
 
+function item_select() {
+    var target = event.target || event.srcElement;
+    var item_name = target.id;
 
+    var price_name = item_name.replace('item','price');
+
+    var item = document.getElementById(item_name);
+    var item_id = item.value;
+
+    //alert('selected:'+item.options[item.selectedIndex].text+' item element id:'+item_name+ ' price element name:'+price_name);
+
+    var param = 'item_id='+item_id;
+    xhr('ajax?mode=stock_item',param,show_item_price,price_name);
+}
+
+function show_item_price(str,price_id) {
+    //alert(str+':'+price_id);
+
+    if(str.substring(0,5) === 'ERROR') {
+        alert(str);
+    } else {  
+        var item = $.parseJSON(str);
+
+        var price = document.getElementById(price_id);
+        price.value = item.price_sell;
+    }    
+    
+}
+
+function calc_total() {
+    var target = event.target || event.srcElement;
+    
+    var input_name = target.id;
+    var row = input_name.split('_'). pop();
+
+    var amount_name = 'amount_'+row;
+    var price_name = 'price_'+row;
+    var subtotal_name = 'subtotal_'+row;
+    var tax_name = 'tax_'+row;
+    var total_name = 'total_'+row;
+
+    var amount = document.getElementById(amount_name).value;
+    var price = document.getElementById(price_name).value;
+    
+    var subtotal  = amount * price;
+    var tax = subtotal * tax_rate;
+    var total = subtotal + tax;
+
+    document.getElementById(subtotal_name).value = subtotal.toFixed(2);
+    document.getElementById(tax_name).value = tax.toFixed(2);
+    document.getElementById(total_name).value = total.toFixed(2);
+}
 </script>  

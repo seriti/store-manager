@@ -25,6 +25,8 @@ class Item extends Table
 
         $this->addTableCol(array('id'=>'item_id','type'=>'INTEGER','title'=>'Item ID','key'=>true,'key_auto'=>true,'list'=>false));
         $this->addTableCol(array('id'=>'name','type'=>'STRING','title'=>'Item name'));
+        $this->addTableCol(array('id'=>'code','type'=>'STRING','title'=>'Item code',
+                                 'hint'=>'Unique code typically shorter than name and should not change once set'));
         $this->addTableCol(array('id'=>'category_id','type'=>'INTEGER','title'=>'Category','join'=>'name FROM '.TABLE_PREFIX.'item_category WHERE category_id'));
         $this->addTableCol(array('id'=>'units','type'=>'STRING','title'=>'Units','new'=>'Kg'));
         $this->addTableCol(array('id'=>'units_kg_convert','type'=>'DECIMAL','title'=>'Units convert to Kg','new'=>'1'));
@@ -52,6 +54,18 @@ class Item extends Table
         $status = ['OK','HIDE'];
         $this->addSelect('status',['list'=>$status,'list_assoc'=>false]);
         $this->addSelect('category_id','SELECT category_id,name FROM '.TABLE_PREFIX.'item_category WHERE status <> "HIDE" ORDER BY sort');
-   }
+    }
+
+    protected function beforeUpdate($id,$context,&$data,&$error) 
+    {
+        $sql = 'SELECT COUNT(*) FROM '.$this->table.' '.
+               'WHERE code = "'.$this->db->escapeSql($data['code']).'" ';
+        if($context === 'UPDATE') $sql .= 'AND item_id <> "'.$this->db->escapeSql($id).'" ';
+        $count = $this->db->readSqlValue($sql);
+        if($count != 0) {
+            $this->addError('Item code['.$data['code'].'] is altready in use. Code must be unique.');
+        }
+
+    }
    
 } 

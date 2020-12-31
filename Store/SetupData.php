@@ -16,6 +16,7 @@ class SetupData extends SetupModuledata
                                 `item_id` int(11) NOT NULL AUTO_INCREMENT,
                                 `category_id` int(11) NOT NULL,
                                 `name` varchar(64) NOT NULL,
+                                `code` varchar(64) NOT NULL,
                                 `units` varchar(16) NOT NULL,
                                 `units_kg_convert` decimal(12,2) NOT NULL,
                                 `price_buy` decimal(12,2) NOT NULL,
@@ -23,7 +24,8 @@ class SetupData extends SetupModuledata
                                 `tax_free` tinyint(1) NOT NULL,
                                 `note` text NOT NULL,
                                 `status` varchar(64) NOT NULL,
-                                PRIMARY KEY (`item_id`) 
+                                PRIMARY KEY (`item_id`),
+                                UNIQUE KEY `idx_str_item1` (`code`)
                             ) ENGINE=InnoDB DEFAULT CHARSET=utf8'); 
 
         $this->addCreateSql('item_category',
@@ -137,6 +139,7 @@ class SetupData extends SetupModuledata
                             'CREATE TABLE `TABLE_NAME` (
                                 `client_id` int(11) NOT NULL AUTO_INCREMENT,
                                 `name` varchar(64) NOT NULL,
+                                `account_code` varchar(64) NOT NULL,
                                 `email` varchar(250) NOT NULL,
                                 `address` text NOT NULL,
                                 `note` text NOT NULL,
@@ -172,7 +175,7 @@ class SetupData extends SetupModuledata
                                 `note` text NOT NULL,
                                 `status` varchar(64) NOT NULL,
                                 PRIMARY KEY (`data_id`),
-                                UNIQUE KEY `idx_deliver_item1` (`deliver_id`,`store_id`,`stock_id`)
+                                UNIQUE KEY `idx_deliver_item1` (`deliver_id`,`stock_id`)
                           ) ENGINE=InnoDB DEFAULT CHARSET=utf8'); 
 
         $this->addCreateSql('transfer',
@@ -271,8 +274,8 @@ class SetupData extends SetupModuledata
         $this->addInitialSql('INSERT INTO `TABLE_PREFIXitem_category` (name,access,access_level,sort,status) '.
                              'VALUES("Item default category","ADMIN",2,10,"OK"),("Item secure category","GOD",1,20,"OK")');
 
-        $this->addInitialSql('INSERT INTO `TABLE_PREFIXitem` (category_id,name,units,units_kg_convert,status) '.
-                             'VALUES(1,"My first stock item","Kg",1,"OK"),(2,"My secure stock item","Litre",1,"OK")'); 
+        $this->addInitialSql('INSERT INTO `TABLE_PREFIXitem` (category_id,name,code,units,units_kg_convert,status) '.
+                             'VALUES(1,"My first stock item","MFSI","Kg",1,"OK"),(2,"My secure stock item","Litre",1,"OK")'); 
 
         $this->addInitialSql('INSERT INTO `TABLE_PREFIXsupplier` (name,status) '.
                              'VALUES("My first supplier","OK")');       

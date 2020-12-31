@@ -2,9 +2,9 @@
 namespace App\Store;
 
 use Psr\Container\ContainerInterface;
-use App\Store\ReceiveFile;
+use App\Store\DeliverFile;
 
-class ReceiveFileController
+class DeliverFileController
 {
     protected $container;
 
@@ -16,13 +16,13 @@ class ReceiveFileController
     public function __invoke($request, $response, $args)
     {
         $table_name = TABLE_PREFIX.'file';
-        $upload = new ReceiveFile($this->container->mysql,$this->container,$table_name);
+        $upload = new DeliverFile($this->container->mysql,$this->container,$table_name);
 
         $upload->setup();
         $html = $upload->processUpload();
 
         $template['html'] = $html;
-        //$template['title'] = MODULE_LOGO.'Receive documents';
+        //$template['title'] = MODULE_LOGO.'Delivery documents';
         return $this->container->view->render($response,'admin_popup.php',$template);
     }
 }

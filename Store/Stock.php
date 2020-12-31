@@ -40,6 +40,7 @@ class Stock extends Table
         $this->addSearchXtra('S.invoice_no','Invoice');
 
         $this->addSelect('store_id','SELECT store_id, name FROM '.TABLE_PREFIX.'store ORDER BY name');
+        
     }
 
     public function beforeProcess()

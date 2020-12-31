@@ -131,7 +131,7 @@ class Helpers {
         $table_category = $table_prefix.'item_category';
         
         $sql = 'SELECT S.supplier_id,S.invoice_no,S.quantity_in,S.quantity_out,'.
-                      'SU.name as supplier,I.name,I.units,I.units_kg_convert,C.name AS category,C.access,C.access_level '.
+                      'SU.name as supplier,I.name,I.code,I.units,I.units_kg_convert,C.name AS category,C.access,C.access_level '.
                'FROM '.$table_stock.' AS S '.
                      'JOIN '.$table_supplier.' AS SU ON(S.supplier_id = SU.supplier_id) '.
                      'JOIN '.$table_item.' AS I ON (S.item_id = I.item_id) '.
@@ -710,6 +710,355 @@ class Helpers {
         }
 
         if($error === '') return true; else return false;
+    }
+
+    public static function createDeliverPdf($db,ContainerInterface $container,$deliver_id,&$doc_name,&$error)
+    {
+        $error = '';
+        $pdf_dir = BASE_UPLOAD.UPLOAD_DOCS;
+        //for custom settings like signature
+        $upload_dir = BASE_UPLOAD.UPLOAD_DOCS;
+
+        $table_items = TABLE_PREFIX.'deliver_item';
+        $system = $container->system;
+
+        $business_address = $system->getDefault('STORE_ADDRESS','No address setup');
+        $business_contact = $system->getDefault('STORE_CONTACT','No contacts details');
+        $footer = $system->getDefault('STORE_DELIVER_FOOTER','No footer setup');
+        
+        $deliver = self::get($db,TABLE_PREFIX,'deliver',$deliver_id);
+        $deliver['discount'] = '0.00';  //NB: no discount supported for delivery notes
+
+        $client = self::get($db,TABLE_PREFIX,'client',$deliver['client_id']);
+        
+        $sql = 'SELECT data_id,stock_id,quantity,price,subtotal,tax,total '.
+               'FROM '.$table_items.' WHERE deliver_id = "'.$db->escapeSql($deliver_id).'" '.
+               'ORDER BY total DESC ';
+        $items = $db->readSqlArray($sql); 
+
+     
+        //doc_no must be unique
+        $doc_no = 'DN'.$deliver_id;
+        $pdf_name = 'DN-'.$deliver_id.'.pdf';
+        $doc_name = $pdf_name;
+                
+        $pdf = new DeliverPdf('Portrait','mm','A4');
+        $pdf->AliasNbPages();
+            
+        $pdf->setupLayout(['db'=>$db]);
+
+        //NB: override PDF defaults
+        //NB: h1_title only relevant to header
+        //$pdf->h1_title = array(33,33,33,'B',10,'',5,10,'L','YES',33,33,33,'B',12,20,180); //NO date
+        //$pdf->bg_image = array('images/logo.jpeg',5,140,50,20,'YES'); //NB: YES flag turns off logo image display
+        $pdf->page_margin = array(115,10,10,50);//top,left,right,bottom!!
+        //$pdf->text = array(33,33,33,'',8);
+        $pdf->SetMargins($pdf->page_margin[1],$pdf->page_margin[0],$pdf->page_margin[2]);
+
+        //assign deliver HEADER data 
+        $pdf->addTextElement('business_title',SITE_NAME);
+        $pdf->addTextElement('doc_name','Delivery Note');
+        $pdf->addTextElement('doc_date',$deliver['date']);
+        $pdf->addTextElement('doc_no',$doc_no);
+       
+        $pdf->addTextBlock('business_address',$business_address);
+        $pdf->addTextBlock('business_contact',$business_contact);
+
+        $pdf->addTextBlock('client_detail',$client['address']);
+        $pdf->addTextBlock('client_deliver',$client['address']);
+
+        $pdf->addTextElement('acc_no',$client['account_code']);
+        $pdf->addTextElement('acc_ref',$doc_no);
+        $pdf->addTextElement('acc_tax_exempt','N');
+        $pdf->addTextElement('acc_tax_ref','');
+        $pdf->addTextElement('acc_sales_code','');
+
+        //assign deliver FOOTER data 
+        $pdf->addTextBlock('total_info',$footer); //can be anything but normaly banking data
+        $pdf->addTextElement('total_sub',number_format($deliver['subtotal'],2));
+        $pdf->addTextElement('total_discount',number_format($deliver['discount'],2));
+        $pdf->addTextElement('total_ex_tax',number_format(($deliver['subtotal'] - $deliver['discount']),2));
+        $pdf->addTextElement('total_tax',number_format($deliver['tax'],2));
+        $pdf->addTextElement('total',number_format($deliver['total'],2));
+
+        //NB footer must be set before this
+        $pdf->AddPage();
+
+        $row_h = 5;
+
+        //$pdf->SetY(120);
+        //$pdf->Ln($row_h);
+        $frame_y = $pdf->getY();
+        
+        if(count($items) != 0) {
+            
+            $arr = [];
+            $r = 0;
+            $arr[0][$r] = 'Code';
+            $arr[1][$r] = 'Description';
+            $arr[2][$r] = 'Quantity';
+            $arr[3][$r] = 'Price';
+            $arr[4][$r] = 'Disc%';
+            $arr[5][$r] = 'Tax';
+            $arr[6][$r] = 'Total';
+            
+            foreach($items as $item) {
+
+                $stock_item = Self::getStockItem($db,TABLE_PREFIX,$item['stock_id']); 
+
+                $r++;
+                $arr[0][$r] = $stock_item['code'];
+                $arr[1][$r] = $stock_item['name'];
+                $arr[2][$r] = number_format($item['quantity'],0).$stock_item['units'];
+                $arr[3][$r] = $item['price'];
+                $arr[4][$r] = '';//$item['discount'];
+                $arr[5][$r] = $item['tax'];
+                $arr[6][$r] = $item['total'];
+            }
+                         
+            $pdf->changeFont('TEXT');
+            //item_id,item_code,item_desc,quantity,units,unit_price,discount,tax,total
+            $col_width = array(20,75,20,20,20,20,25);
+            $col_type = array('','','','DBL2','DBL2','DBL2','DBL2');
+            $table_options['resize_cols'] = true;
+            $table_options['format_header'] = ['line_width'=>0.1,'fill'=>'#FFFFFF','line_color'=>'#000000'];
+            $table_options['format_text'] = ['line_width'=>0.1]; //['line_width'=>-1];
+            $table_options['header_align'] = 'L';
+            $pdf->arrayDrawTable($arr,$row_h,$col_width,$col_type,'L',$table_options);
+        }
+        
+        if($deliver['notes'] != '') {
+            $pdf->MultiCell(0,$row_h,$deliver['notes'],0,'L',0); 
+            $pdf->Ln($row_h);
+        }
+
+        $pdf->changeFont('H2');
+        $pdf->SetLineWidth(.1);
+        $pdf->SetDrawColor(0,0,0);
+        $pos_x = 10;
+        $pos_y = $frame_y;
+        $width = 190;
+        $height = $pdf->GetY() - $frame_y;
+        $pdf->Rect($pos_x,$pos_y,$width,$height,'D');
+                
+        //finally create pdf file
+        $file_path = $pdf_dir.$pdf_name;
+        $pdf->Output($file_path,'F'); 
+
+        if($error === '') {
+            //comment out and then can view pdf in storage/docs without uploading to amazon etc
+            self::saveDeliverPdf($db,$container->s3,$deliver_id,$doc_name,$error);  
+        }    
+                
+        if($error == '') return true; else return false ;
+    }
+
+    public static function saveDeliverPdf($db,$s3,$deliver_id,$doc_name,&$error) {
+        $error_tmp = '';
+        $error = '';
+     
+        $pdf_dir = BASE_UPLOAD.UPLOAD_DOCS; 
+        
+        $location_id = 'DEL'.$deliver_id;
+        $file_id = Calc::getFileId($db);
+        $file_name = $file_id.'.pdf';
+        $pdf_path_old = $pdf_dir.$doc_name;
+        $pdf_path_new = $pdf_dir.$file_name;
+        //rename doc to new guaranteed non-clashing name
+        if(!rename($pdf_path_old,$pdf_path_new)) {
+            $error .= 'Could not rename delivery note pdf!<br/>'; 
+        } 
+                
+        //create file records and upload to amazon if required
+        if($error == '') {    
+            $file = array();
+            $file['file_id'] = $file_id; 
+            $file['file_name'] = $file_name;
+            $file['file_name_orig'] = $doc_name;
+            $file['file_ext'] = 'pdf';
+            $file['file_date'] = date('Y-m-d');
+            $file['location_id'] = $location_id;
+            $file['encrypted'] = false;
+            $file['file_size'] = filesize($pdf_path_new); 
+            
+            if(STORAGE === 'amazon') {
+                $s3->putFile($file['file_name'],$pdf_path_new,$error_tmp); 
+                if($error_tmp !== '') $error.='Could NOT upload files to Amazon S3 storage!<br/>';
+            } 
+            
+            if($error == '') {
+                $db->insertRecord(TABLE_PREFIX.'file',$file,$error_tmp);
+                if($error_tmp != '') $error .= 'ERROR creating delivery note file record: '.$error_tmp.'<br/>';
+            }   
+        }   
+               
+        
+        if($error == '') return $deliver_id; else return false;
+    }
+
+    public static function stockReport($db,$scope,$store_id,$options = [],&$error)
+    {
+        $error = '';
+
+        if(!isset($options['format'])) $options['format'] = 'HTML'; 
+        $options['format'] = strtoupper($options['format']);
+
+        $table_prefix = TABLE_PREFIX;
+
+        $table_store = $table_prefix.'store';
+        $table_stock = $table_prefix.'stock';
+        $table_stock_store = $table_prefix.'stock_store';
+
+        $table_deliver = $table_prefix.'deliver';
+        $table_deliver_item = $table_prefix.'deliver_item';
+
+        $table_item = $table_prefix.'item';
+        $table_category = $table_prefix.'item_category';
+
+
+        if($store_id != 'ALL') {
+            $store = self::get($db,$table_prefix,'store',$store_id);
+        } else {
+            $store['name'] = 'All stores';
+        }
+
+        $base_doc_name = 'stock_report_summary_'.str_replace(' ','_',$store['name']);
+        $page_title = 'Stock summary '.$store['name'];
+        
+        //list of stock items
+        $sql = 'SELECT I.item_id,I.name,I.code,I.units,I.units_kg_convert,I.category_id, C.name AS category '.
+               'FROM '.$table_item.' AS I JOIN '.$table_category.' AS C ON (I.category_id = C.category_id) '.
+               'ORDER BY I.item_id ';
+        $items = $db->readSqlArray($sql);
+
+        //get current stock
+        $sql = 'SELECT SS.stock_id,SS.quantity,S.name AS store,'.
+                      'ST.item_id,ST.supplier_id,ST.invoice_no,ST.quantity_in,ST.quantity_out '.
+               'FROM '.$table_stock_store.' AS SS '.
+                     'JOIN '.$table_store.' AS S ON(SS.store_id = S.store_id) '.
+                     'JOIN '.$table_stock.' AS ST ON(SS.stock_id = ST.stock_id) '.
+                'WHERE SS.quantity > 0 ';
+        if($store_id != 'ALL') $sql .= 'AND SS.store_id = "'.$db->escapeSql($store_id).'" ';
+        $stock = $db->readSqlArray($sql,false);
+
+        //get deliveries not completed
+        $sql = 'SELECT DI.stock_id,DI.quantity,S.name AS store, '.
+                      'ST.item_id,ST.supplier_id,ST.invoice_no,ST.quantity_in,ST.quantity_out '.
+               'FROM '.$table_deliver_item.' AS DI '.
+                     'JOIN '.$table_deliver.' AS D ON(DI.deliver_id = D.deliver_id) '.
+                     'JOIN '.$table_store.' AS S ON(D.store_id = S.store_id) '.
+                     'JOIN '.$table_stock.' AS ST ON(DI.stock_id = ST.stock_id) '.
+               'WHERE D.status = "NEW" ';
+        if($store_id !== 'ALL') $sql .= 'AND D.store_id = "'.$db->escapeSql($store_id).'" ';
+        $delivery = $db->readSqlArray($sql,false);
+
+        if($stock == 0 and $delivery == 0) $error .= 'NO stock found in stores or awaiting delivery confirmation';
+        
+        if($error !== '') return false;
+
+        $data = [];
+        $stock_store = [];
+        $stock_deliver = [];
+        $stock_items = [];
+        $r = 0;
+        if($scope === 'SUMMARY') {
+            $col_width = [30,50,10,30,30];
+            $col_type = ['','','','DBL0','DBL0'];
+
+            $data[0][$r] = 'Item code';
+            $data[1][$r] = 'Item Name';
+            $data[2][$r] = 'Units';
+            $data[3][$r] = 'Store quantity';
+            $data[4][$r] = 'Delivery quantity'; 
+            $r++; 
+
+            if($stock != 0) {
+                foreach($stock AS $item) {
+                    //simple list of report items
+                    if(!in_array($item['item_id'],$stock_items)) $stock_items[] = $item['item_id'];
+                    //sum all existing stock
+                    if(!isset($stock_store[$item['item_id']])) $stock_store[$item['item_id']] = 0;
+                    $stock_store[$item['item_id']] += $item['quantity'];
+                }
+            }
+
+            if($delivery != 0) {
+                foreach($delivery AS $item) {
+                    if(!in_array($item['item_id'],$stock_items)) $stock_items[] = $item['item_id'];
+                    if(!isset($stock_deliver[$item['item_id']])) $stock_deliver[$item['item_id']] = 0;
+                    $stock_deliver[$item['item_id']] += $item['quantity'];
+                }
+            }
+
+            foreach($stock_items AS $item_id) {
+                $data[0][$r] = $items[$item_id]['code'];
+                $data[1][$r] = $items[$item_id]['name'];
+                $data[2][$r] = $items[$item_id]['units'];
+                $data[3][$r] = $stock_store[$item_id];
+                $data[4][$r] = $stock_deliver[$item_id];
+                $r++;
+            }   
+        }
+        
+
+        if($options['format'] === 'PDF') {
+            $pdf_name=$base_doc_name.date('Y-m-d').'.pdf';
+            $doc_name=$pdf_name;
+            
+            //$logo=array($img_dir.'logo_new.jpg',5,140,60,22); 
+            
+            $pdf=new Pdf('Portrait','mm','A4');
+            $pdf->AliasNbPages();
+              
+            $pdf->setupLayout(['db'=>$db]);
+            //change setup system setting if there is one
+            $pdf->page_title = $page_title;
+            //$pdf->bg_image=$logo; 
+            //$pdf->SetLineWidth(0.1);
+            
+            //$pdf->footer_text='footer';
+    
+            //NB footer must be set before this
+            $pdf->AddPage();
+            $pdf->changeFont('TEXT');
+            $pdf_options=array();
+            $pdf_options['font_size']=6;
+            $row_h = 6;
+
+            $pdf->arrayDrawTable($data,$row_h,$col_width,$col_type,'C',$pdf_options);
+
+            //$pdf->mysqlDrawTable($result,$row_h,$col_width,$col_type,'L',$options);
+                        
+            //$file_path=$pdf_dir.$pdf_name;
+            //$pdf->Output($file_path,'F');  
+    
+            //finally create pdf file to browser
+            $pdf->Output($pdf_name,'D');    
+            exit;
+            
+        }
+        if($options['format'] === 'CSV') {
+            
+            $csv_data = '';
+            $doc_name = $base_doc_name.'_on_'.date('Y-m-d').'.csv';
+            $csv_data = Csv::arrayDumpCsv($data); 
+            
+            Doc::outputDoc($csv_data,$doc_name,'DOWNLOAD','csv');
+            exit;
+            
+        }
+        
+        if($options['format']==='HTML') {
+            $html = '<h1>'.$page_title.'</h1>';  
+            $html_options = [];
+            $html_options['col_type'] = $col_type; 
+            $html.=Html::arrayDumpHtml2($data,$html_options); 
+          
+            $html.='<br/>';
+                  
+            return $html;
+        }
+
     }
 }
 ?>

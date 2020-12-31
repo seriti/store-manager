@@ -8,6 +8,8 @@ use Seriti\Tools\Secure;
 use Seriti\Tools\Audit;
 use Seriti\Tools\Validate;
 
+use App\Store\Helpers;
+
 class Deliver extends Table
 {
     protected $status = ['NEW','DELIVERED','INVOICED'];
@@ -30,6 +32,11 @@ class Deliver extends Table
         $this->addTableCol(['id'=>'status','type'=>'STRING','title'=>'Status']);
 
         $this->addSortOrder('T.deliver_id DESC','Most recent first','DEFAULT');
+
+        $this->setupFiles(['table'=>TABLE_PREFIX.'file','location'=>'DEL','max_no'=>100,
+                           'icon'=>'<span class="glyphicon glyphicon-file" aria-hidden="true"></span>&nbsp;manage',
+                           'list'=>true,'list_no'=>5,'storage'=>STORAGE,
+                           'link_url'=>'deliver_file','link_data'=>'SIMPLE','width'=>'700','height'=>'600']);
 
         $this->addAction(['type'=>'check_box','text'=>'']); 
         $this->addAction(['type'=>'edit','text'=>'edit','icon_text'=>'edit']);
@@ -56,6 +63,7 @@ class Deliver extends Table
         if(!$this->access['read_only']) {
             $list['SELECT'] = 'Action for selected '.$this->row_name_plural;
             $list['STATUS_CHANGE'] = 'Change '.$this->row_name.' Status.';
+            $list['CREATE_PDF'] = 'Create delivery note PDF';
             $list['EMAIL_DELIVER'] = 'Email '.$this->row_name;
         }  
         
@@ -164,7 +172,18 @@ class Deliver extends Table
                                 if($this->debug) $error .= $error_tmp;
                                 $this->addError($error);
                             }   
-                        }  
+                        }
+
+                        if($action === 'CREATE_PDF') {
+                            Helpers::createDeliverPdf($this->db,$this->container,$deliver_id,$doc_name,$error_tmp);
+                            if($error_tmp === '') {
+                                $audit_str .= ' success!';
+                                $audit_count++;
+                                $this->addMessage('Delivery ID['.$deliver_id.'] PDF created');      
+                            } else {
+                                $this->addError('Cound not create delivery note for delivery ID['.$deliver_id.']:'.$error_tmp);
+                            }   
+                        }    
                     }   
                 }  
               

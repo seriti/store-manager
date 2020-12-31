@@ -5,14 +5,14 @@ use Seriti\Tools\Upload;
 use Seriti\Tools\STORAGE;
 use Seriti\Tools\BASE_PATH;
 use Seriti\Tools\BASE_UPLOAD;
-class ReceiveFile extends Upload
+class DeliverFile extends Upload
 {
     public function setup($param = [])
     {
-        $id_prefix = 'REC';
+        $id_prefix = 'DEL';
 
         $param = [];
-        $param['row_name'] = 'Receive document';
+        $param['row_name'] = 'Delivery document';
         $param['pop_up'] = true;
         $param['col_label'] = 'file_name_orig';
         $param['update_calling_page'] = true;
@@ -23,12 +23,12 @@ class ReceiveFile extends Upload
         //$this->allow_ext = ['Documents'=>['doc','xls','ppt','pdf','rtf','docx','xlsx','pptx','ods','odt','txt','csv','zip','gz','msg','eml']]; 
 
         $param = [];
-        $param['table']     = TABLE_PREFIX.'receive';
-        $param['key']       = 'receive_id';
+        $param['table']     = TABLE_PREFIX.'deliver';
+        $param['key']       = 'deliver_id';
         $param['label']     = 'name';
         $param['child_col'] = 'location_id';
         $param['child_prefix'] = $id_prefix;
-        $param['show_sql'] = 'SELECT CONCAT("Receive ID-",receive_id) FROM '.TABLE_PREFIX.'receive WHERE receive_id = "{KEY_VAL}" ';
+        $param['show_sql'] = 'SELECT CONCAT("Deliver ID-",deliver_id) FROM '.TABLE_PREFIX.'deliver WHERE deliver_id = "{KEY_VAL}" ';
         $this->setupMaster($param);
 
         $this->addAction(['type'=>'edit','text'=>'edit details of','icon_text'=>'edit']);

@@ -13,8 +13,9 @@ class Client extends Table
         $param = ['row_name'=>'Client','col_label'=>'name','pop_up'=>false];
         parent::setup($param);
 
-        $this->addTableCol(['id'=>'client_id','type'=>'INTEGER','title'=>'client_ID','key'=>true,'key_auto'=>true]);
+        $this->addTableCol(['id'=>'client_id','type'=>'INTEGER','title'=>'Client ID','key'=>true,'key_auto'=>true]);
         $this->addTableCol(['id'=>'name','type'=>'STRING','title'=>'Name']);
+        $this->addTableCol(['id'=>'account_code','type'=>'STRING','title'=>'Account code']);
         $this->addTableCol(['id'=>'email','type'=>'STRING','title'=>'Email']);
         $this->addTableCol(['id'=>'address','type'=>'TEXT','title'=>'Address','required'=>false]);
         $this->addTableCol(['id'=>'note','type'=>'TEXT','title'=>'Note','required'=>false]);

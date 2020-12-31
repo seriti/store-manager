@@ -12,6 +12,7 @@ $app->group('/admin', function () {
         $this->any('/client', App\Store\ClientController::class);
         $this->any('/client_file', App\Store\ClientFileController::class);
         $this->any('/deliver', App\Store\DeliverController::class);
+        $this->any('/deliver_file', App\Store\DeliverFileController::class);
         $this->any('/deliver_item', App\Store\DeliverItemController::class);
         $this->any('/deliver_wizard', \App\Store\DeliverWizardController::class);
         $this->any('/deliver_confirm', \App\Store\DeliverConfirmController::class);
@@ -26,6 +27,7 @@ $app->group('/admin', function () {
         $this->any('/receive_file', App\Store\ReceiveFileController::class);
         $this->any('/receive_item', App\Store\ReceiveItemController::class);
         $this->any('/receive_wizard', \App\Store\ReceiveWizardController::class);
+        $this->any('/report', App\Store\ReportController::class);
         $this->any('/stock', App\Store\StockController::class);
         $this->any('/setup', \App\Store\SetupController::class);
         $this->any('/store', App\Store\StoreController::class);
@@ -40,7 +42,7 @@ $app->group('/admin', function () {
         $this->any('/setup_dashboard', \App\Store\SetupDashboardController::class);
         $this->get('/setup_data', \App\Store\SetupDataController::class);
     })->add(\App\Store\Config::class);
-
+    
 })->add(\App\User\ConfigAdmin::class);
 
 

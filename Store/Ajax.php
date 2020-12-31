@@ -42,6 +42,7 @@ class Ajax
 
         if($mode === 'supplier_orders') $output = $this->getSupplierOrders($_POST);
         if($mode === 'deliver_confirm') $output = $this->confirmDeliver($_POST);
+        if($mode === 'stock_item') $output = $this->getStockItem($_POST);
 
             return $output;
     }
@@ -110,6 +111,25 @@ class Ajax
   
         $output = json_encode($output);
 
+        return $output;
+
+    }
+
+    protected function getStockItem($form)
+    {
+        $error = '';
+        $html = '';
+       
+        $item_id = Secure::clean('alpha',$form['item_id']);
+       
+        $item = Helpers::get($this->db,$this->table_prefix,'item',$item_id);   
+       
+        if($item == 0) {
+            $output = 'ERROR: No item data found';
+        } else {
+            $output = json_encode($item);
+        }
+        
         return $output;
 
     }

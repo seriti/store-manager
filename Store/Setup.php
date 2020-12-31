@@ -19,20 +19,25 @@ class Setup extends SetupModule
         $param['value'] = '';
         $this->addDefault('TEXTAREA','STORE_EMAIL_FOOTER','Email footer',$param);
 
-        /*
         $param = [];
-        $param['info'] = 'Specify Shop catalogue footer text / contact details';
+        $param['info'] = 'Specify business address details / used for delivery notes.';
         $param['rows'] = 5;
         $param['value'] = '';
-        $this->addDefault('TEXTAREA','SHOP_CATALOGUE_FOOTER','Catalogue footer',$param);
-        */
+        $this->addDefault('TEXTAREA','STORE_ADDRESS','Business address',$param);
+
+        $param = [];
+        $param['info'] = 'Specify business contact details / used for delivery notes.';
+        $param['rows'] = 5;
+        $param['value'] = '';
+        $this->addDefault('TEXTAREA','STORE_CONTACT','Business contact',$param);
         
         $param = [];
-        $param['info'] = 'Specify invoice footer text / bank account details / any info you require to be added.';
+        $param['info'] = 'Specify delivery note footer text / bank account details / any info you require to be added.';
         $param['rows'] = 10;
         $param['value'] = '';
-        $this->addDefault('TEXTAREA','STORE_INVOICE_FOOTER','Invoice PDF footer',$param);
+        $this->addDefault('TEXTAREA','STORE_DELIVER_FOOTER','Delivery note footer',$param);
 
+        /*
         $param = [];
         $param['info'] = 'Select the image you would like to use as a signature on invoices and other documents(max 50KB)';
         $param['max_size'] = 50000;
@@ -43,5 +48,6 @@ class Setup extends SetupModule
         $param['info'] = 'Specify the name and title you wish to have below signature image.';
         $param['value'] = 'Chief Executive Officer';
         $this->addDefault('TEXT','STORE_SIGN_TXT','Signature subtext',$param);
+        */
     }    
 }

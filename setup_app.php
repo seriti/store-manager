@@ -8,8 +8,9 @@ This tells the framework about module: name, sub-memnu route list and title, dat
 
 $container['config']->set('module','store',['name'=>'Store manager',
                                               'route_root'=>'admin/store/',
-                                              'route_list'=>['dashboard'=>'Dashboard','order'=>'Orders','receive'=>'Reception','transfer'=>'Transfers','deliver'=>'Deliveries',
-                                                             'stock'=>'Stock','setup_dashboard'=>'Setup'],
+                                              'route_list'=>['dashboard'=>'Dashboard','order'=>'Orders','receive'=>'Reception',
+                                                             'transfer'=>'Transfers','deliver'=>'Deliveries',
+                                                             'stock'=>'Stock','setup_dashboard'=>'Setup','report'=>'Reports'],
                                               'table_prefix'=>'str_'
                                              ]);
 

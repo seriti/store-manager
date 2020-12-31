@@ -38,7 +38,7 @@ class Store extends Table
         $this->addAction(['type'=>'edit','text'=>'edit','icon_text'=>'edit']);
         $this->addAction(['type'=>'delete','text'=>'delete','icon_text'=>'delete','pos'=>'R']);
 
-        $this->addSearch(['store_id','name','note','access','access_level','status'],['rows'=>1]);
+        $this->addSearch(['store_id','name','note','access','status'],['rows'=>2]);
 
         $this->addSelect('location_id','SELECT location_id, name FROM '.TABLE_PREFIX.'location ORDER BY name');
         $this->addSelect('access',['list'=>$config->get('user','access'),'list_assoc'=>false]);
