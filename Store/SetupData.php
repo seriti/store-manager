@@ -139,8 +139,11 @@ class SetupData extends SetupModuledata
                             'CREATE TABLE `TABLE_NAME` (
                                 `client_id` int(11) NOT NULL AUTO_INCREMENT,
                                 `name` varchar(64) NOT NULL,
+                                `contact` varchar(64) NOT NULL,
                                 `account_code` varchar(64) NOT NULL,
                                 `email` varchar(250) NOT NULL,
+                                `cell` varchar(32) NOT NULL,
+                                `tel` varchar(32) NOT NULL,
                                 `address` text NOT NULL,
                                 `note` text NOT NULL,
                                 `status` varchar(16) NOT NULL,

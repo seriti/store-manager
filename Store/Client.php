@@ -14,20 +14,22 @@ class Client extends Table
         parent::setup($param);
 
         $this->addTableCol(['id'=>'client_id','type'=>'INTEGER','title'=>'Client ID','key'=>true,'key_auto'=>true]);
-        $this->addTableCol(['id'=>'name','type'=>'STRING','title'=>'Name']);
+        $this->addTableCol(['id'=>'name','type'=>'STRING','title'=>'Client name']);
+        $this->addTableCol(['id'=>'contact','type'=>'STRING','title'=>'Contact name','required'=>false]);
         $this->addTableCol(['id'=>'account_code','type'=>'STRING','title'=>'Account code']);
-        $this->addTableCol(['id'=>'email','type'=>'STRING','title'=>'Email']);
+        $this->addTableCol(['id'=>'email','type'=>'EMAIL','title'=>'Email']);
+        $this->addTableCol(['id'=>'cell','type'=>'STRING','title'=>'Cell/mobile No.','required'=>false]);
+        $this->addTableCol(['id'=>'tel','type'=>'STRING','title'=>'Landline No.','required'=>false]);
         $this->addTableCol(['id'=>'address','type'=>'TEXT','title'=>'Address','required'=>false]);
         $this->addTableCol(['id'=>'note','type'=>'TEXT','title'=>'Note','required'=>false]);
         $this->addTableCol(['id'=>'status','type'=>'STRING','title'=>'Status']);
-
 
         $this->addSortOrder('T.client_id DESC','Most recent first','DEFAULT');
 
         $this->addAction(['type'=>'edit','text'=>'edit','icon_text'=>'edit']);
         $this->addAction(['type'=>'delete','text'=>'delete','icon_text'=>'delete','pos'=>'R']);
 
-        $this->addSearch(['client_id','name','email','address','note','status'],['rows'=>2]);
+        $this->addSearch(['client_id','name','contact','account_code','email','cell','tel','address','note','status'],['rows'=>3]);
 
 
         $this->setupFiles(['table'=>TABLE_PREFIX.'file','location'=>'CLT','max_no'=>100,

@@ -41,6 +41,8 @@ class Order extends Table
 
         $this->addSearch(['order_id','location_id','supplier_id','date','subtotal','tax','total','note','status'],['rows'=>2]);
 
+        $this->addSearchAggregate(['sql'=>'SUM(T.total)','title'=>'Total value']);
+
         $this->addSelect('supplier_id','SELECT supplier_id, name FROM '.TABLE_PREFIX.'supplier ORDER BY name');
         $this->addSelect('location_id','SELECT location_id, name FROM '.TABLE_PREFIX.'location ORDER BY name');
 
