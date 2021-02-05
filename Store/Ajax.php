@@ -42,6 +42,7 @@ class Ajax
 
         if($mode === 'supplier_orders') $output = $this->getSupplierOrders($_POST);
         if($mode === 'deliver_confirm') $output = $this->confirmDeliver($_POST);
+        if($mode === 'client_locations') $output = $this->getClientLocations($_POST);
         if($mode === 'stock_item') $output = $this->getStockItem($_POST);
 
             return $output;
@@ -69,6 +70,31 @@ class Ajax
             $orders = ['0'=>'Select order, or Receive without order'] + $orders;
         }
         $output = json_encode($orders);
+
+        return $output;
+
+    }
+
+    protected function getClientLocations($form)
+    {
+        $error = '';
+        $html = '';
+       
+        $client_id = Secure::clean('alpha',$form['client_id']);
+        if($client_id === 'SELECT') {
+            $sql = 'SELECT 0,"Unknown, Select client."';
+        } else {
+            $sql = 'SELECT location_id,name FROM '.TABLE_PREFIX.'client_location '.
+                   'WHERE client_id= "'.$this->db->escapeSql($client_id).'" AND status <> "HIDE" ORDER BY sort';  
+        }
+        $locations = $this->db->readSqlList($sql);    
+       
+        if($locations == 0) {
+            $locations = ['0'=>'No locations found. Deliver without location'];
+        } else {
+            $locations = ['0'=>'Select location, or Deliver without location'] + $locations;
+        }
+        $output = json_encode($locations);
 
         return $output;
 

@@ -67,6 +67,9 @@ class ReceiveWizard extends Wizard
         $error = '';
         $error_tmp = '';
 
+        //NB: if true and order_id set then assumes entire order processed. Can update order status manually 
+        $update_order = false;
+
         //supplier info
         if($this->page_no == 1) {
 
@@ -310,7 +313,8 @@ class ReceiveWizard extends Wizard
 
             //update order if necessary
             if(!$this->errors_found) {
-                if($this->data['order'] !== 0) {
+                //NB: partial order reception NOT catered for
+                if($update_order and $this->data['order'] !== 0) {
                     $order_id = $this->data['order']['order_id'];
                     $sql = 'UPDATE '.TABLE_PREFIX.'order SET status = "RECEIVED" '.
                            'WHERE order_id = "'.$order_id.'" ';
@@ -318,8 +322,7 @@ class ReceiveWizard extends Wizard
                     if($error_tmp !== '') $this->addError('Could not update Order ID['.$order_id.'] status = RECEIVED');      
                 }
             }    
-
-            //finally SETUP payment gateway form if that option requested, or email EFT instructions
+            
             if(!$this->errors_found) {
                 /*
                 if($this->form['confirm_action'] === 'EMAIL') {

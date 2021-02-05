@@ -9,7 +9,7 @@ class SetupData extends SetupModuledata
     public function setupSql()
     {
         $this->tables = ['item','item_category','store','location','supplier','order','order_item','receive','receive_item',
-                         'transfer','transfer_item','client','deliver','deliver_item','stock','stock_store','file','user_extend'];
+                         'transfer','transfer_item','client','client_location','deliver','deliver_item','stock','stock_store','file','user_extend'];
 
         $this->addCreateSql('item',
                             'CREATE TABLE `TABLE_NAME` (
@@ -150,17 +150,37 @@ class SetupData extends SetupModuledata
                                 PRIMARY KEY (`client_id`) 
                             ) ENGINE=InnoDB DEFAULT CHARSET=utf8'); 
 
+        $this->addCreateSql('client_location',
+                            'CREATE TABLE `TABLE_NAME` (
+                                `location_id` int(11) NOT NULL AUTO_INCREMENT,
+                                `client_id` int(11) NOT NULL,
+                                `name` varchar(250) NOT NULL,
+                                `address` TEXT NOT NULL,
+                                `contact` varchar(64) NOT NULL,
+                                `cell` varchar(64) NOT NULL,
+                                `tel` varchar(64) NOT NULL,
+                                `email` varchar(64) NOT NULL,
+                                `map_lat` decimal(10,6) NOT NULL,
+                                `map_lng` decimal(10,6) NOT NULL,
+                                `sort` int(11) NOT NULL,
+                                `status` varchar(64) NOT NULL,
+                                PRIMARY KEY (`location_id`)
+                            ) ENGINE=InnoDB DEFAULT CHARSET=utf8');
+
         $this->addCreateSql('deliver',
                             'CREATE TABLE `TABLE_NAME` (
                                 `deliver_id` int(11) NOT NULL AUTO_INCREMENT,
                                 `date` date NOT NULL,
                                 `client_id` int(11) NOT NULL,
+                                `client_location_id` int(11) NOT NULL,
+                                `client_order_no` varchar(64) NOT NULL,
                                 `store_id` int(11) NOT NULL,
                                 `item_no` int(11) NOT NULL,
                                 `subtotal` decimal(12,2) NOT NULL,
                                 `tax` decimal(12,2) NOT NULL,
                                 `total` decimal(12,2) NOT NULL,
                                 `note` text NOT NULL,
+                                `transport_paid` tinyint(1) NOT NULL,
                                 `status` varchar(64) NOT NULL,
                                 PRIMARY KEY (`deliver_id`)
                           ) ENGINE=InnoDB DEFAULT CHARSET=utf8'); 
@@ -284,7 +304,10 @@ class SetupData extends SetupModuledata
                              'VALUES("My first supplier","OK")');       
 
         //updates use time stamp in ['YYYY-MM-DD HH:MM'] format, must be unique and sequential
-        //$this->addUpdateSql('YYYY-MM-DD HH:MM','Update TABLE_PREFIX--- SET --- "X"');
+        //$this->addUpdateSql('2021-02-05 17:00','ALTER TABLE `TABLE_PREFIXdeliver` ADD COLUMN `client_location_id` INT NOT NULL AFTER `client_id`');
+        //$this->addUpdateSql('2021-02-05 18:00','ALTER TABLE `TABLE_PREFIXdeliver` ADD COLUMN `client_order_no` VARCHAR(64) NOT NULL AFTER `client_location_id`');
+        
+
     }
  
 }

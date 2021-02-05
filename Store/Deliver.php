@@ -13,6 +13,7 @@ use App\Store\Helpers;
 class Deliver extends Table
 {
     protected $status = ['NEW','DELIVERED','INVOICED'];
+    protected $yes_no = ['YES','NO'];
 
     public function setup($param = []) 
     {
@@ -23,12 +24,15 @@ class Deliver extends Table
         $this->addTableCol(['id'=>'deliver_id','type'=>'INTEGER','title'=>'Deliver ID','key'=>true,'key_auto'=>true]);
         $this->addTableCol(['id'=>'date','type'=>'DATE','title'=>'Date','new'=>date('Y-m-d')]);
         $this->addTableCol(['id'=>'client_id','type'=>'INTEGER','title'=>'Client','join'=>'name FROM '.TABLE_PREFIX.'client WHERE client_id']);
+        $this->addTableCol(['id'=>'client_location_id','type'=>'INTEGER','title'=>'Location','join'=>'name FROM '.TABLE_PREFIX.'client_location WHERE location_id']);
+        $this->addTableCol(['id'=>'client_order_no','type'=>'STRING','title'=>'Client order no.','new'=>'NA']);
         $this->addTableCol(['id'=>'store_id','type'=>'INTEGER','title'=>'From Store','join'=>'name FROM '.TABLE_PREFIX.'store WHERE store_id']);
         $this->addTableCol(['id'=>'item_no','type'=>'INTEGER','title'=>'No items','edit'=>false]);
         $this->addTableCol(['id'=>'subtotal','type'=>'DECIMAL','title'=>'Subtotal']);
         $this->addTableCol(['id'=>'tax','type'=>'DECIMAL','title'=>'Tax']);
         $this->addTableCol(['id'=>'total','type'=>'DECIMAL','title'=>'Total']);
         $this->addTableCol(['id'=>'note','type'=>'TEXT','title'=>'Note','required'=>false]);
+        $this->addTableCol(['id'=>'transport_paid','type'=>'BOOLEAN','title'=>'Transport paid','required'=>false]);
         $this->addTableCol(['id'=>'status','type'=>'STRING','title'=>'Status']);
 
         $this->addSortOrder('T.deliver_id DESC','Most recent first','DEFAULT');
@@ -53,6 +57,13 @@ class Deliver extends Table
 
     }
 
+    protected function modifyRowValue($col_id,$data,&$value) {
+        if($col_id === 'client_location_id') {
+            if($value == '') $value = 'NO location';
+        }    
+    } 
+
+
     protected function viewTableActions() {
         $html = '';
         $list = array();
@@ -65,6 +76,7 @@ class Deliver extends Table
             $list['STATUS_CHANGE'] = 'Change '.$this->row_name.' Status.';
             $list['CREATE_PDF'] = 'Create delivery note PDF';
             $list['EMAIL_DELIVER'] = 'Email '.$this->row_name;
+            $list['TRANSPORT_PAID'] = 'Update Transport paid.';
         }  
         
         if(count($list) != 0){
@@ -73,6 +85,7 @@ class Deliver extends Table
             $param['onchange'] = 'javascript:change_table_action()';
             $action_id = '';
             $status_change = 'NONE';
+            $transport_paid = 'YES';
             $email_address = '';
             
             $html .= Form::arrayList($list,'table_action',$action_id,true,$param);
@@ -85,10 +98,13 @@ class Deliver extends Table
                      'var action = table_action.options[table_action.selectedIndex].value; '.
                      'var status_select = document.getElementById(\'status_select\');'.
                      'var email_deliver = document.getElementById(\'email_deliver\');'.
+                     'var transport_select = document.getElementById(\'transport_select\');'.
                      'status_select.style.display = \'none\'; '.
                      'email_deliver.style.display = \'none\'; '.
+                     'transport_select.style.display = \'none\'; '.
                      'if(action==\'STATUS_CHANGE\') status_select.style.display = \'inline\';'.
                      'if(action==\'EMAIL_DELIVER\') email_deliver.style.display = \'inline\';'.
+                     'if(action==\'TRANSPORT_PAID\') transport_select.style.display = \'inline\';'.
                      '}'.
                      '</script>';
             
@@ -103,6 +119,11 @@ class Deliver extends Table
             $html .= '<span id="email_deliver" style="display:none"> Email address&raquo;'.
                      Form::textInput('email_address',$email_address,$param).
                      '</span>';
+
+                     //$param['class']='form-control col-sm-3';
+            $html .= '<span id="transport_select" style="display:none"> paid&raquo;'.
+                     Form::arrayList($this->yes_no,'transport_paid',$transport_paid,false,$param).
+                     '</span>'; 
                     
             $html .= '&nbsp;<input type="submit" name="action_submit" value="Apply action to selected '.
                      $this->row_name_plural.'" class="btn btn-primary">';
@@ -136,6 +157,11 @@ class Deliver extends Table
                 $audit_str = 'Email order to['.$email_address.'] ';
                 if($error_str != '') $this->addError('INVAID email address['.$email_address.']!');
             }
+
+            if($action === 'TRANSPORT_PAID') {
+                $transport_paid = Secure::clean('alpha',$_POST['transport_paid']);
+                $audit_str = 'Transport paid['.$transport_paid.'] ';
+            }
             
             if(!$this->errors_found) {     
                 foreach($_POST as $key => $value) {
@@ -155,6 +181,22 @@ class Deliver extends Table
                                 $this->addMessage($message_str);                
                             } else {
                                 $this->addError('Could not update status for Deliver ID['.$deliver_id.']: '.$error_tmp);                
+                            }  
+                        }
+
+                        if($action === 'TRANSPORT_PAID') {
+                            if($transport_paid === 'YES') $bool = 1; else $bool = 0;
+                            $sql = 'UPDATE '.$this->table.' SET transport_paid = "'.$bool.'" '.
+                                   'WHERE deliver_id = "'.$this->db->escapeSql($deliver_id).'" ';
+                            $this->db->executeSql($sql,$error_tmp);
+                            if($error_tmp === '') {
+                                $message_str = 'Transport paid['.$transport_paid.'] for Deliver ID['.$deliver_id.'] ';
+                                $audit_str .= ' success!';
+                                $audit_count++;
+                                
+                                $this->addMessage($message_str);                
+                            } else {
+                                $this->addError('Could not update transport paid for Deliver ID['.$deliver_id.']: '.$error_tmp);                
                             }  
                         }
                         

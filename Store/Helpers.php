@@ -40,6 +40,40 @@ class Helpers {
         return $record;
     } 
 
+    public static function getDeliverItems($db,$table_prefix,$deliver_id,$format = 'ARRAY')
+    {
+        if($format !== 'ARRAY') {
+            $output = '';
+        } else {
+            $output = [];    
+        }
+        
+        $table_deliver_item = $table_prefix.'deliver_item';
+        $table_stock = $table_prefix.'stock';
+        $table_item = $table_prefix.'item';
+        $table_category = $table_prefix.'item_category';
+        
+        $sql = 'SELECT D.stock_id,I.name,D.quantity,I.units,D.price,D.subtotal,D.tax,D.total,D.note  '.
+               'FROM '.$table_deliver_item.' AS D '.
+                     'JOIN '.$table_stock.' AS S ON(D.stock_id = S.stock_id) '.
+                     'JOIN '.$table_item.' AS I ON (S.item_id = I.item_id) '.
+               'WHERE deliver_id = "'.$db->escapeSql($deliver_id).'" ';
+
+        $items = $db->readSqlArray($sql);
+        if($items != 0) {
+             if($format === 'HTML') {
+                $output .= '<table>';
+                foreach($items as $item) {
+                    $output .= '<tr><td>'.$item['name'].'&nbsp;</td><td>'.$item['quantity'].$item['units'].'</td></tr>';
+                }
+                $output .= '</table>';
+             }
+        }
+
+        return $output;
+        
+    }    
+
     public static function getDeliverConfirm($db,$table_prefix,$store_id,$allow_confirm = false)
     {
         $html = '';
@@ -69,16 +103,18 @@ class Helpers {
         } else {
 
             $html .= '<table class="table  table-striped table-bordered table-hover table-condensed">'.
-                     '<tr><th>ID</th><th>Store</th><th>Client</th><th>No items</th><th>Total value</th><th>Delivered</th></tr>';
+                     '<tr><th>ID</th><th>Store</th><th>Client</th><th>Items</th><th>Total value</th><th>Delivered</th></tr>';
             foreach($deliveries as $deliver_id => $deliver) {
                 if($allow_confirm) {
                     $link = '<input type="checkbox" id="D'.$deliver_id.'" onclick="deliver_update(\''.$deliver_id.'\')" >';
                 } else {
                     $link = 'Not yet. You cannot update.';
                 }
+
+                $items = self::getDeliverItems($db,$table_prefix,$deliver_id,'HTML');
                 
                 $html .= '<tr id="R'.$deliver_id.'"><td>'.$deliver_id.'</td><td>'.$deliver['store'].'</td><td>'.$deliver['client'].'</td>'.
-                             '<td>'.$deliver['item_no'].'</td><td>'.number_format($deliver['total'],2).'</td>'.
+                             '<td>'.$items.'</td><td>'.number_format($deliver['total'],2).'</td>'.
                              '<td>'.$link.'</td>'.
                           '</tr>';
             }
@@ -722,6 +758,8 @@ class Helpers {
         $table_items = TABLE_PREFIX.'deliver_item';
         $system = $container->system;
 
+        $show_price = false;
+
         $business_address = $system->getDefault('STORE_ADDRESS','No address setup');
         $business_contact = $system->getDefault('STORE_CONTACT','No contacts details');
         $footer = $system->getDefault('STORE_DELIVER_FOOTER','No footer setup');
@@ -730,6 +768,12 @@ class Helpers {
         $deliver['discount'] = '0.00';  //NB: no discount supported for delivery notes
 
         $client = self::get($db,TABLE_PREFIX,'client',$deliver['client_id']);
+
+        if($deliver['client_location_id'] == 0) {
+            $location['address'] = $client['address'];
+        } else {
+            $location = self::get($db,TABLE_PREFIX,'client_location',$deliver['client_location_id'],'location_id');
+        }
         
         $sql = 'SELECT data_id,stock_id,quantity,price,subtotal,tax,total '.
                'FROM '.$table_items.' WHERE deliver_id = "'.$db->escapeSql($deliver_id).'" '.
@@ -765,22 +809,24 @@ class Helpers {
         $pdf->addTextBlock('business_contact',$business_contact);
 
         $pdf->addTextBlock('client_detail',$client['address']);
-        $pdf->addTextBlock('client_deliver',$client['address']);
+        $pdf->addTextBlock('client_deliver',$location['address']);
 
         $pdf->addTextElement('acc_no',$client['account_code']);
-        $pdf->addTextElement('acc_ref',$doc_no);
+        $pdf->addTextElement('acc_ref',$deliver['client_order_no']);
         $pdf->addTextElement('acc_tax_exempt','N');
         $pdf->addTextElement('acc_tax_ref','');
         $pdf->addTextElement('acc_sales_code','');
 
         //assign deliver FOOTER data 
         $pdf->addTextBlock('total_info',$footer); //can be anything but normaly banking data
-        $pdf->addTextElement('total_sub',number_format($deliver['subtotal'],2));
-        $pdf->addTextElement('total_discount',number_format($deliver['discount'],2));
-        $pdf->addTextElement('total_ex_tax',number_format(($deliver['subtotal'] - $deliver['discount']),2));
-        $pdf->addTextElement('total_tax',number_format($deliver['tax'],2));
-        $pdf->addTextElement('total',number_format($deliver['total'],2));
-
+        if($show_price) {
+            $pdf->addTextElement('total_sub',number_format($deliver['subtotal'],2));
+            $pdf->addTextElement('total_discount',number_format($deliver['discount'],2));
+            $pdf->addTextElement('total_ex_tax',number_format(($deliver['subtotal'] - $deliver['discount']),2));
+            $pdf->addTextElement('total_tax',number_format($deliver['tax'],2));
+            $pdf->addTextElement('total',number_format($deliver['total'],2));
+        }
+        
         //NB footer must be set before this
         $pdf->AddPage();
 
@@ -805,6 +851,12 @@ class Helpers {
             foreach($items as $item) {
 
                 $stock_item = Self::getStockItem($db,TABLE_PREFIX,$item['stock_id']); 
+
+                if(!$show_price) {
+                    $item['price'] = '';
+                    $item['tax'] = '';
+                    $item['total'] = '';
+                }
 
                 $r++;
                 $arr[0][$r] = $stock_item['code'];

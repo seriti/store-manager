@@ -11,6 +11,7 @@ $app->group('/admin', function () {
         $this->post('/ajax', \App\Store\Ajax::class);
         $this->any('/client', App\Store\ClientController::class);
         $this->any('/client_file', App\Store\ClientFileController::class);
+        $this->any('/client_location', App\Store\ClientLocationController::class);
         $this->any('/deliver', App\Store\DeliverController::class);
         $this->any('/deliver_file', App\Store\DeliverFileController::class);
         $this->any('/deliver_item', App\Store\DeliverItemController::class);

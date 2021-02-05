@@ -26,7 +26,7 @@ class SetupDashboard extends DashboardTool
         $this->addItem('STOCK','Manage item categories',['link'=>"item_category?mode=list"]);    
         $this->addItem('STOCK','Manage suppliers',['link'=>"supplier?mode=list"]);    
         
-        $this->addBlock('CLIENT',1,3,'Client setup');
+        $this->addBlock('CLIENT',2,1,'Client setup');
         $this->addItem('CLIENT','Manage clients',['link'=>"client?mode=list"]);
 
         

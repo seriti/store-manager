@@ -42,6 +42,8 @@ class DeliverWizard extends Wizard
 
         //standard user cols
         $this->addVariable(array('id'=>'client_id','type'=>'INTEGER','title'=>'Client','required'=>true));
+        $this->addVariable(array('id'=>'client_location_id','type'=>'INTEGER','title'=>'Client Location','required'=>true));
+        $this->addVariable(array('id'=>'client_order_no','type'=>'STRING','title'=>'Client Order No.','required'=>true,'new'=>'NA'));
         $this->addVariable(array('id'=>'store_id','type'=>'INTEGER','title'=>'Store','required'=>true));
         $this->addVariable(array('id'=>'date_deliver','type'=>'DATE','title'=>'Date','required'=>true,'new'=>date('Y-m-d')));
         $this->addVariable(array('id'=>'note','type'=>'TEXT','title'=>'Notes','required'=>false));
@@ -246,6 +248,8 @@ class DeliverWizard extends Wizard
 
                 $deliver = [];
                 $deliver['client_id'] = $this->form['client_id'];
+                $deliver['client_location_id'] = $this->form['client_location_id'];
+                $deliver['client_order_no'] = $this->form['client_order_no'];
                 $deliver['store_id'] = $this->form['store_id'];
                 //$deliver['sale_id'] = $this->form['sale_id'];
                 $deliver['item_no'] = $this->data['item_count'];
