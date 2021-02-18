@@ -29,13 +29,15 @@ class Config
     {
         
         $module = $this->container->config->get('module','store');
+
+        define('MODULE_STORE',$module);
         
         $menu = $this->container->menu;
         $db = $this->container->mysql;
         $user = $this->container->user;
         
         define('TABLE_PREFIX',$module['table_prefix']);
-        define('MODULE_ID','BUCKET');
+        define('MODULE_ID','STORE');
         define('MODULE_LOGO','<span class="glyphicon glyphicon-th"></span> ');
         define('MODULE_PAGE',URL_CLEAN_LAST);
 

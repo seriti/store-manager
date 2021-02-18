@@ -20,6 +20,9 @@ class Report extends ReportTool
         $param = ['input'=>['select_store','select_format']];
         $this->addReport('STOCK_ALL','Current Stock',$param); 
         
+        $param = ['input'=>['select_format']];
+        $this->addReport('STOCK_ALL_STORES','Current Stock, items by store',$param); 
+        
         
         //$this->addInput('select_provider','Select service provider');
         $this->addInput('select_store','Select store');
@@ -80,6 +83,11 @@ class Report extends ReportTool
         
         if($id === 'STOCK_ALL') {
             $html .= Helpers::stockReport($this->db,'SUMMARY',$form['store_id'],$options,$error);
+            if($error !== '') $this->addError($error);
+        }
+
+        if($id === 'STOCK_ALL_STORES') {
+            $html .= Helpers::stockReportAllStores($this->db,'SUMMARY',$options,$error);
             if($error !== '') $this->addError($error);
         }
         

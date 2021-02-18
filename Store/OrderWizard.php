@@ -104,7 +104,7 @@ class OrderWizard extends Wizard
                 $item_id = 'item_'.$i;
                 $amount_id = 'amount_'.$i;
                 $price_id = 'price_'.$i;
-                if(isset($_POST[$item_id])) {
+                if(isset($_POST[$item_id]) and $_POST[$item_id] != 0) {
                     $n++;
                     $item = [];
                     $item['id'] = $_POST[$item_id];

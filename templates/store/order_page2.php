@@ -2,7 +2,11 @@
 use Seriti\Tools\Form;
 use Seriti\Tools\Html;
 
-$list_param['class'] = 'form-control edit_input';
+$amount_param['class'] = 'form-control edit_input';
+
+$item_param['class'] = 'form-control edit_input';
+$item_param['onchange'] = 'javascript:item_select()';
+$item_param['xtra'] = ['0'=>'Select order item'];
 
 $totals = $data['totals'];
 
@@ -30,9 +34,7 @@ if(!isset($data['item_count'])) $data['item_count'] = 0;
     <div class="col-sm-12">
     <h1>Order items: <a href="javascript:add_item()">[add]</a></h1>
     <?php 
-    $item_param = [];
-    $item_param['class'] = 'form-control';
-
+    
     $sql_item = 'SELECT I.item_id,CONCAT(C.name,": ",I.name," - ",I.units) '.
                 'FROM '.TABLE_PREFIX.'item AS I JOIN '.TABLE_PREFIX.'item_category AS C ON(I.category_id = C.category_id) '.
                 'WHERE I.status <> "HIDE" '.
@@ -49,8 +51,8 @@ if(!isset($data['item_count'])) $data['item_count'] = 0;
         
         echo '<tr>'.
              '<td>'.Form::sqlList($sql_item,$this->db,$name_item,$item['id'],$item_param).'</td>'.
-             '<td>'.Form::textInput($name_amount,$item['amount'],$item_param).'</td>'.
-             '<td>'.Form::textInput($name_price,$item['price'],$item_param).'</td>'.
+             '<td>'.Form::textInput($name_amount,$item['amount'],$amount_param).'</td>'.
+             '<td>'.Form::textInput($name_price,$item['price'],$amount_param).'</td>'.
              '<td><a href="#" onclick="delete_row(this)"><img src="/images/cross.png"></a></td>'.
              '</tr>';
     }
@@ -133,5 +135,33 @@ function delete_row(link) {
     row.parentNode.removeChild(row);
 };
 
+function item_select() {
+    var target = event.target || event.srcElement;
+    var item_name = target.id;
+
+    var price_name = item_name.replace('item','price');
+
+    var item = document.getElementById(item_name);
+    var item_id = item.value;
+
+    //alert('selected:'+item.options[item.selectedIndex].text+' item element id:'+item_name+ ' price element name:'+price_name);
+
+    var param = 'item_id='+item_id;
+    xhr('ajax?mode=stock_item',param,show_item_price,price_name);
+}
+
+function show_item_price(str,price_id) {
+    //alert(str+':'+price_id);
+
+    if(str.substring(0,5) === 'ERROR') {
+        alert(str);
+    } else {  
+        var item = $.parseJSON(str);
+
+        var price = document.getElementById(price_id);
+        price.value = item.price_buy;
+    }    
+    
+}
 
 </script>  

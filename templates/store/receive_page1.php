@@ -46,7 +46,7 @@ $date_param['class'] = 'form-control edit_input bootstrap_date';
   </div>
 
   <div class="row">
-    <div class="col-sm-3">Invoice No.:</div>
+    <div class="col-sm-3"><?php echo MODULE_STORE['labels']['invoice_no'];?>:</div>
     <div class="col-sm-3">
     <?php 
     echo Form::textInput('invoice_no',$form['invoice_no'],$list_param)

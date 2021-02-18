@@ -984,7 +984,7 @@ class Helpers {
         $items = $db->readSqlArray($sql);
 
         //get current stock
-        $sql = 'SELECT SS.stock_id,SS.quantity,S.name AS store,'.
+        $sql = 'SELECT SS.stock_id,SS.quantity,SS.store_id,S.name AS store,'.
                       'ST.item_id,ST.supplier_id,ST.invoice_no,ST.quantity_in,ST.quantity_out '.
                'FROM '.$table_stock_store.' AS SS '.
                      'JOIN '.$table_store.' AS S ON(SS.store_id = S.store_id) '.
@@ -994,7 +994,7 @@ class Helpers {
         $stock = $db->readSqlArray($sql,false);
 
         //get deliveries not completed
-        $sql = 'SELECT DI.stock_id,DI.quantity,S.name AS store, '.
+        $sql = 'SELECT DI.stock_id,DI.quantity,D.store_id,S.name AS store, '.
                       'ST.item_id,ST.supplier_id,ST.invoice_no,ST.quantity_in,ST.quantity_out '.
                'FROM '.$table_deliver_item.' AS DI '.
                      'JOIN '.$table_deliver.' AS D ON(DI.deliver_id = D.deliver_id) '.
@@ -1049,6 +1049,223 @@ class Helpers {
                 $data[3][$r] = $stock_store[$item_id];
                 $data[4][$r] = $stock_deliver[$item_id];
                 $r++;
+            }   
+        }
+        
+
+        if($options['format'] === 'PDF') {
+            $pdf_name=$base_doc_name.date('Y-m-d').'.pdf';
+            $doc_name=$pdf_name;
+            
+            //$logo=array($img_dir.'logo_new.jpg',5,140,60,22); 
+            
+            $pdf=new Pdf('Portrait','mm','A4');
+            $pdf->AliasNbPages();
+              
+            $pdf->setupLayout(['db'=>$db]);
+            //change setup system setting if there is one
+            $pdf->page_title = $page_title;
+            //$pdf->bg_image=$logo; 
+            //$pdf->SetLineWidth(0.1);
+            
+            //$pdf->footer_text='footer';
+    
+            //NB footer must be set before this
+            $pdf->AddPage();
+            $pdf->changeFont('TEXT');
+            $pdf_options=array();
+            $pdf_options['font_size']=6;
+            $row_h = 6;
+
+            $pdf->arrayDrawTable($data,$row_h,$col_width,$col_type,'C',$pdf_options);
+
+            //$pdf->mysqlDrawTable($result,$row_h,$col_width,$col_type,'L',$options);
+                        
+            //$file_path=$pdf_dir.$pdf_name;
+            //$pdf->Output($file_path,'F');  
+    
+            //finally create pdf file to browser
+            $pdf->Output($pdf_name,'D');    
+            exit;
+            
+        }
+        if($options['format'] === 'CSV') {
+            
+            $csv_data = '';
+            $doc_name = $base_doc_name.'_on_'.date('Y-m-d').'.csv';
+            $csv_data = Csv::arrayDumpCsv($data); 
+            
+            Doc::outputDoc($csv_data,$doc_name,'DOWNLOAD','csv');
+            exit;
+            
+        }
+        
+        if($options['format']==='HTML') {
+            $html = '<h1>'.$page_title.'</h1>';  
+            $html_options = [];
+            $html_options['col_type'] = $col_type; 
+            $html.=Html::arrayDumpHtml2($data,$html_options); 
+          
+            $html.='<br/>';
+                  
+            return $html;
+        }
+
+    }
+
+    public static function stockReportAllStores($db,$scope,$options = [],&$error)
+    {
+        $error = '';
+
+        if(!isset($options['format'])) $options['format'] = 'HTML'; 
+        $options['format'] = strtoupper($options['format']);
+
+        $table_prefix = TABLE_PREFIX;
+
+        $table_store = $table_prefix.'store';
+        $table_stock = $table_prefix.'stock';
+        $table_stock_store = $table_prefix.'stock_store';
+
+        $table_deliver = $table_prefix.'deliver';
+        $table_deliver_item = $table_prefix.'deliver_item';
+
+        $table_item = $table_prefix.'item';
+        $table_category = $table_prefix.'item_category';
+
+
+        if($store_id != 'ALL') {
+            $store = self::get($db,$table_prefix,'store',$store_id);
+        } else {
+            $store['name'] = 'All stores';
+        }
+
+        $base_doc_name = 'stock_report_summary_'.str_replace(' ','_',$store['name']);
+        $page_title = 'Stock summary '.$store['name'];
+        
+        //list of stock items
+        $sql = 'SELECT I.item_id,I.name,I.code,I.units,I.units_kg_convert,I.category_id, C.name AS category '.
+               'FROM '.$table_item.' AS I JOIN '.$table_category.' AS C ON (I.category_id = C.category_id) '.
+               'ORDER BY I.item_id ';
+        $items = $db->readSqlArray($sql);
+
+        //Simple list of stores
+        $sql = 'SELECT store_id,name '.
+               'FROM '.$table_store.' ORDER BY name';
+        $stores = $db->readSqlList($sql);
+
+
+        //get current stock
+        $sql = 'SELECT SS.stock_id,SS.quantity,SS.store_id,S.name AS store,'.
+                      'ST.item_id,ST.supplier_id,ST.invoice_no,ST.quantity_in,ST.quantity_out '.
+               'FROM '.$table_stock_store.' AS SS '.
+                     'JOIN '.$table_store.' AS S ON(SS.store_id = S.store_id) '.
+                     'JOIN '.$table_stock.' AS ST ON(SS.stock_id = ST.stock_id) '.
+                'WHERE SS.quantity > 0 '.
+                'ORDER BY ST.item_id,S.name ';
+        //if($store_id != 'ALL') $sql .= 'AND SS.store_id = "'.$db->escapeSql($store_id).'" ';
+        $stock = $db->readSqlArray($sql,false);
+
+        //get deliveries not completed
+        $sql = 'SELECT DI.stock_id,DI.quantity,D.store_id,S.name AS store, '.
+                      'ST.item_id,ST.supplier_id,ST.invoice_no,ST.quantity_in,ST.quantity_out '.
+               'FROM '.$table_deliver_item.' AS DI '.
+                     'JOIN '.$table_deliver.' AS D ON(DI.deliver_id = D.deliver_id) '.
+                     'JOIN '.$table_store.' AS S ON(D.store_id = S.store_id) '.
+                     'JOIN '.$table_stock.' AS ST ON(DI.stock_id = ST.stock_id) '.
+               'WHERE D.status = "NEW" ';
+        //if($store_id !== 'ALL') $sql .= 'AND D.store_id = "'.$db->escapeSql($store_id).'" ';
+        $delivery = $db->readSqlArray($sql,false);
+
+        if($stock == 0 and $delivery == 0) $error .= 'NO stock found in stores or awaiting delivery confirmation';
+        
+        if($error !== '') return false;
+
+        $data = [];
+        $stock_store = [];
+        $stock_deliver = [];
+        $stock_items = [];
+        $r = 0;
+        if($scope === 'SUMMARY') {
+            $col_width = [30,30,50,10,30,30];
+            $col_type = ['','','','','DBL0','DBL0'];
+
+            $data[0][$r] = 'Item code';
+            $data[1][$r] = 'Item Name';
+            $data[2][$r] = 'Units';
+            $data[3][$r] = 'Store';
+            $data[4][$r] = 'Quantity';
+            $data[5][$r] = 'Delivery quantity'; 
+            $r++; 
+
+            if($stock != 0) {
+                foreach($stock AS $item) {
+                    //simple list of report items
+                    $key = $item['store_id'].':'.$item['item_id'];
+                    if(!in_array($key,$stock_items)) $stock_items[$key] = ['store_id'=>$item['store_id'],'item_id'=>$item['item_id']];
+                    //sum all existing stock
+                    if(!isset($stock_store[$key])) $stock_store[$key] = 0;
+                    $stock_store[$key] += $item['quantity'];
+                }
+            }
+
+            if($delivery != 0) {
+                foreach($delivery AS $item) {
+                    $key = $item['store_id'].':'.$item['item_id'];
+                    if(!in_array($key,$stock_items)) $stock_items[$key] = ['store_id'=>$item['store_id'],'item_id'=>$item['item_id']];
+                    if(!isset($stock_deliver[$key])) $stock_deliver[$key] = 0;
+                    $stock_deliver[$key] += $item['quantity'];
+                }
+            }
+
+            $item_id_prev = '';
+            foreach($stock_items AS $key=>$item) {
+                if($item['item_id'] !== $item_id_prev) {
+                    if($item_id_prev !== '' and $total_no > 1) {
+                        $data[0][$r] = '';
+                        $data[1][$r] = '';
+                        $data[2][$r] = '';
+                        $data[3][$r] = 'Total';
+                        $data[4][$r] = $total_store;
+                        $data[5][$r] = $total_deliver;
+                        $r++; 
+                    }
+
+                    $total_store = 0;
+                    $total_deliver = 0;
+                    $total_no = 0; 
+                
+                    $code = $items[$item['item_id']]['code'];
+                    $name = $items[$item['item_id']]['name'];
+                    $units = $items[$item['item_id']]['units'];
+                } else {
+                    $code = '...';
+                    $name = '...';
+                    $units = '...';
+                }
+
+                $total_store += $stock_store[$key];
+                $total_deliver += $stock_deliver[$key];
+                $total_no++;
+
+                $data[0][$r] = $code;
+                $data[1][$r] = $name;
+                $data[2][$r] = $units;
+                $data[3][$r] = $stores[$item['store_id']];
+                $data[4][$r] = $stock_store[$key];
+                $data[5][$r] = $stock_deliver[$key];
+                $r++;
+
+                $item_id_prev = $item['item_id'];
+            }
+
+            //final totals if necessary
+            if($total_no > 1) {
+                $data[0][$r] = '';
+                $data[1][$r] = '';
+                $data[2][$r] = '';
+                $data[3][$r] = 'Total';
+                $data[4][$r] = $total_store;
+                $data[5][$r] = $total_deliver;
             }   
         }
         
