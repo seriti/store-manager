@@ -331,7 +331,7 @@ class ReceiveWizard extends Wizard
                     $param = ['cc_admin'=>true,'email'=>$this->form['confirm_email']];
                     $subject = 'Confirmation';
                     $message = $this->form['note'];
-                    Helpers::sendReceptionConfirmation($this->db,$this->table_prefix,$this->container,$order_id,$subject,$message,$param,$error_tmp);
+                    Helpers::sendReceiveConfirmation($this->db,$this->table_prefix,$this->container,$order_id,$subject,$message,$param,$error_tmp);
                     if($error_tmp !== '') {
                         $message = 'We could not email supplier order details, but your order has been successfully saved.';
                         if($this->debug) $message .= $error_tmp;

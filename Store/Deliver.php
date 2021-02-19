@@ -24,7 +24,10 @@ class Deliver extends Table
         $this->addTableCol(['id'=>'deliver_id','type'=>'INTEGER','title'=>'Deliver ID','key'=>true,'key_auto'=>true]);
         $this->addTableCol(['id'=>'date','type'=>'DATE','title'=>'Date','new'=>date('Y-m-d')]);
         $this->addTableCol(['id'=>'client_id','type'=>'INTEGER','title'=>'Client','join'=>'name FROM '.TABLE_PREFIX.'client WHERE client_id']);
-        $this->addTableCol(['id'=>'client_location_id','type'=>'INTEGER','title'=>'Location','join'=>'name FROM '.TABLE_PREFIX.'client_location WHERE location_id']);
+        if(CLIENT_LOCATION) {
+            $this->addTableCol(['id'=>'client_location_id','type'=>'INTEGER','title'=>'Client location','join'=>'name FROM '.TABLE_PREFIX.'client_location WHERE location_id']);    
+        }
+        
         $this->addTableCol(['id'=>'client_order_no','type'=>'STRING','title'=>'Client order no.','new'=>'NA']);
         $this->addTableCol(['id'=>'store_id','type'=>'INTEGER','title'=>'From Store','join'=>'name FROM '.TABLE_PREFIX.'store WHERE store_id']);
         $this->addTableCol(['id'=>'item_no','type'=>'INTEGER','title'=>'No items','edit'=>false]);
@@ -75,7 +78,8 @@ class Deliver extends Table
             $list['SELECT'] = 'Action for selected '.$this->row_name_plural;
             $list['STATUS_CHANGE'] = 'Change '.$this->row_name.' Status.';
             $list['CREATE_PDF'] = 'Create delivery note PDF';
-            $list['EMAIL_DELIVER'] = 'Email '.$this->row_name;
+            $list['EMAIL_DELIVER'] = 'Email '.$this->row_name.' details';
+            $list['EMAIL_ALL_DOCS'] = 'Email ALL '.$this->row_name.' documents in single email';
             $list['TRANSPORT_PAID'] = 'Update Transport paid.';
         }  
         
@@ -104,6 +108,7 @@ class Deliver extends Table
                      'transport_select.style.display = \'none\'; '.
                      'if(action==\'STATUS_CHANGE\') status_select.style.display = \'inline\';'.
                      'if(action==\'EMAIL_DELIVER\') email_deliver.style.display = \'inline\';'.
+                     'if(action==\'EMAIL_ALL_DOCS\') email_deliver.style.display = \'inline\';'.
                      'if(action==\'TRANSPORT_PAID\') transport_select.style.display = \'inline\';'.
                      '}'.
                      '</script>';
@@ -140,6 +145,9 @@ class Deliver extends Table
         $audit_str = '';
         $audit_count = 0;
         $html = '';
+
+        //use for emailing multiple delivery docs to single email
+        $action_delivery = array();
             
         $action = Secure::clean('basic',$_POST['table_action']);
         if($action === 'SELECT') {
@@ -154,7 +162,14 @@ class Deliver extends Table
             if($action === 'EMAIL_DELIVER') {
                 $email_address = Secure::clean('email',$_POST['email_address']);
                 Validate::email('email address',$email_address,$error_str);
-                $audit_str = 'Email order to['.$email_address.'] ';
+                $audit_str = 'Email delivery to['.$email_address.'] ';
+                if($error_str != '') $this->addError('INVAID email address['.$email_address.']!');
+            }
+
+            if($action === 'EMAIL_ALL_DOCS') {
+                $email_address = Secure::clean('email',$_POST['email_address']);
+                Validate::email('email address',$email_address,$error_str);
+                $audit_str = 'Email all delivery docs to['.$email_address.'] ';
                 if($error_str != '') $this->addError('INVAID email address['.$email_address.']!');
             }
 
@@ -216,6 +231,11 @@ class Deliver extends Table
                             }   
                         }
 
+                        if($action === 'EMAIL_ALL_DOCS') {
+                            $action_delivery[] = $deliver_id;
+                        }
+
+
                         if($action === 'CREATE_PDF') {
                             Helpers::createDeliverPdf($this->db,$this->container,$deliver_id,$doc_name,$error_tmp);
                             if($error_tmp === '') {
@@ -229,7 +249,20 @@ class Deliver extends Table
                     }   
                 }  
               
-            }  
+            } 
+
+            if(!$this->errors_found and $action === 'EMAIL_ALL_DOCS') {
+                $subject = '';
+                $message = '';
+                $send_param = [];
+                Helpers::sendDeliverDocs($this->db,TABLE_PREFIX,$this->container,$action_delivery,$email_address,$subject,$message,$send_param,$error_tmp);
+                
+                if($error_tmp === '') {
+                    $this->addMessage('SUCCESS sending delivery documents to['.$email_address.']'); 
+                } else {
+                    $this->addError('FAILURE sending delivery documents to['.$email_address.']:'.$error_tmp); 
+                }
+            } 
         }  
         
         //audit any updates except for deletes as these are already audited 

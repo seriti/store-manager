@@ -9,6 +9,7 @@ use Seriti\Tools\Html;
 use Seriti\Tools\Pdf;
 use Seriti\Tools\Doc;
 use Seriti\Tools\Date;
+use Seriti\Tools\Upload;
 use Seriti\Tools\DEBUG;
 use Seriti\Tools\STORAGE;
 use Seriti\Tools\SITE_TITLE;
@@ -670,6 +671,58 @@ class Helpers {
         }
         
         if($error !== '') return false; else return $output;
+    }
+
+    public static function getDeliverDetails($db,$table_prefix,$deliver_id,$param = [],&$error)
+    {
+        $error = '';
+        $output = [];
+        
+        if(!isset($param['get'])) $param['get'] = 'ALL';
+
+        $table_deliver = $table_prefix.'deliver';
+        $table_client = $table_prefix.'client';
+        $table_client_location = $table_prefix.'client_location';
+        $table_store = $table_prefix.'store';
+
+        $table_deliver_item = $table_prefix.'deliver_item';
+        $table_stock = $table_prefix.'stock';
+        $table_item = $table_prefix.'item';
+        
+        if($param['get'] === 'ALL' or $param['get'] === 'BASIC') {
+            $sql = 'SELECT D.deliver_id,D.date,D.item_no,D.subtotal,D.tax,D.total,D.note,D.transport_paid,D.status,'.
+                          'D.store_id,S.name AS store,'.
+                          'D.client_id,D.client_order_no,C.name AS client,C.contact,C.account_code,C.email,C.cell,C.tel,C.email,C.address, '.
+                          'D.client_location_id,L.name AS client_location,L.address AS location_address, '.
+                          'L.contact AS location_contact,L.cell AS location_cell,L.tel AS location_tel,L.email AS location_email '.
+                   'FROM '.$table_deliver.' AS D '.
+                         'JOIN '.$table_store.' AS S ON(D.store_id = S.store_id) '.
+                         'JOIN '.$table_client.' AS C ON(D.client_id = C.client_id) '.
+                         'LEFT JOIN '.$table_client_location.' AS L ON(D.client_location_id = L.location_id) '.
+                   'WHERE D.deliver_id = "'.$db->escapeSql($deliver_id).'" ';
+            $deliver = $db->readSqlRecord($sql);
+            if($deliver === 0) {
+                $error .= 'Invalid Deliver ID['.$order_id.']. ';
+            } else {
+                $output['deliver'] = $deliver;
+            }    
+        }
+                
+        if($param['get'] === 'ALL' or $param['get'] === 'ITEMS') {
+            $sql = 'SELECT D.stock_id,I.name,D.quantity,I.units,D.price,D.subtotal,D.tax,D.total,D.note  '.
+                   'FROM '.$table_deliver_item.' AS D '.
+                         'JOIN '.$table_stock.' AS S ON(D.stock_id = S.stock_id) '.
+                         'JOIN '.$table_item.' AS I ON (S.item_id = I.item_id) '.
+                   'WHERE deliver_id = "'.$db->escapeSql($deliver_id).'" ';
+            $items = $db->readSqlArray($sql);
+            if($items === 0) {
+                $error .= 'No items for Deliver ID['.$deliver_id.']. ';
+            } else {
+                $output['items'] = $items;
+            }
+        }
+        
+        if($error !== '') return false; else return $output;
     }    
 
     public static function sendOrderConfirmation($db,$table_prefix,ContainerInterface $container,$order_id,$subject,$message,$param,&$error)
@@ -688,7 +741,7 @@ class Helpers {
         $mail = $container['mail'];
 
         //setup email parameters
-        $mail_footer = $system->getDefault('SHOP_EMAIL_FOOTER','');
+        $mail_footer = $system->getDefault('STORE_EMAIL_FOOTER','');
         $mail_param = [];
         $mail_param['format'] = 'html';
         if($param['cc_admin']) $mail_param['bcc'] = MAIL_FROM;
@@ -748,6 +801,170 @@ class Helpers {
         if($error === '') return true; else return false;
     }
 
+    public static function sendDeliverConfirmation($db,$table_prefix,ContainerInterface $container,$deliver_id,$subject,$message,$param,&$error)
+    {
+        $error = '';
+        $html = '';
+        $error_tmp = '';
+
+        if(!isset($param['cc_admin'])) $param['cc_admin'] = false;
+        if(!isset($param['email'])) $param['email'] = '';
+
+
+        $system = $container['system'];
+        $mail = $container['mail'];
+
+        //setup email parameters
+        $mail_footer = $system->getDefault('STORE_EMAIL_FOOTER','');
+        $mail_param = [];
+        $mail_param['format'] = 'html';
+        if($param['cc_admin']) $mail_param['bcc'] = MAIL_FROM;
+
+        $detail_param = [];
+       
+        $data = self::getDeliverDetails($db,$table_prefix,$deliver_id,$detail_param,$error_tmp);
+        if($data === false or $error_tmp !== '') {
+            $error .= 'Could not get Delivery details: '.$error_tmp;
+        } 
+
+        if($error === '') {
+            $mail_from = ''; //will use default MAIL_FROM
+            if($param['email'] !== '') {
+                $mail_to = $param['email'];   
+            } else {
+                $mail_to = $data['deliver']['email'];    
+            }
+            
+            $mail_subject = SITE_NAME.' Delivery ID['.$deliver_id.'] ';
+
+            if($subject !== '') $mail_subject .= ': '.$subject;
+            
+            $mail_body = '<h1>Hi there '.$data['deliver']['contact'].'</h1>';
+            
+            if($message !== '') $mail_body .= '<h3>'.$message.'</h3>';
+            
+            $mail_body .= '<h3>Deliver ID['.$deliver_id.'] details:</h3>'.
+                          'Created on: <b>'.Date::formatDate($data['deliver']['date']).'</b><br/>'.
+                          'Deliver to: <b>'.$data['deliver']['client'].'</b><br/><br/>'.
+                          'Subtotal: <b>'.$data['deliver']['subtotal'].'</b><br/>'.
+                          'Tax: <b>'.$data['deliver']['tax'].'</b><br/>'.
+                          'Total: <b>'.$data['deliver']['total'].'</b><br/>';
+
+            //do not want bootstrap class default
+            $html_param = ['class'=>''];
+            $items = [];
+            foreach($data['items'] as $item) {
+                //IT.name,I.price,I.quantity,I.subtotal,I.tax,I.total
+                $items[] = ['Name'=>$item['name'],
+                            'Quantity'=>$item['quantity'],
+                            'Price'=>$item['price'],
+                            'Subtotal'=>$item['subtotal'],
+                            'Tax'=>$item['tax'],
+                            'Total'=>$item['total']] ;
+            }
+            $mail_body .= '<h3>Delivery items:</h3>'.Html::arrayDumpHtml($items,$html_param);
+                            
+            $mail_body .= '<br/><br/>'.$mail_footer;
+            
+            $mail->sendEmail($mail_from,$mail_to,$mail_subject,$mail_body,$error_tmp,$mail_param);
+            if($error_tmp != '') { 
+                $error .= 'Error sending Order details to email['. $mail_to.']:'.$error_tmp; 
+            }
+        }
+
+        if($error === '') return true; else return false;
+    }
+
+    //sends delivery docs for multiple deliveries
+    public static function sendDeliverDocs($db,$table_prefix,ContainerInterface $container,$deliveries = [],$email,$subject,$message,$param,&$error)
+    {
+        $error = '';
+        $html = '';
+        $error_tmp = '';
+
+        if(!isset($param['cc_admin'])) $param['cc_admin'] = false;
+        if(!isset($param['zip'])) $param['zip'] = false;
+        
+        if($email === '') $error .= 'No email address specified. ';
+
+        $system = $container['system'];
+        $mail = $container['mail'];
+
+        //setup email parameters
+        $mail_footer = $system->getDefault('STORE_EMAIL_FOOTER','');
+        $mail_param = [];
+        $mail_param['format'] = 'html';
+        if($param['cc_admin']) $mail_param['bcc'] = MAIL_FROM;
+
+        if(count($deliveries) === 0) $error .= 'No deliveries specified for emailing documents. ';
+
+        $deliver_param = ['get'=>'BASIC'];
+        $deliver_details = [];
+        foreach($deliveries as $deliver_id) {
+            $deliver = self::getDeliverDetails($db,$table_prefix,$deliver_id,$deliver_param,$error_tmp);
+            if($error_tmp !== '') {
+                $error .= 'Could not get Delivery ID['.$deliver_id.'] details. ';
+            } else {
+                $deliver_details[$deliver_id] = $deliver;
+            }
+        }  
+
+        if($error !== '') return false;
+
+        //get all files related to invoice
+        $attach = array();
+        $attach_file = array();
+        $attach_msg = '';
+
+        //NB: only using for download, all files associated with invoice will be attached
+        $docs = new Upload($db,$container,$table_prefix.'file');
+        $docs->setup(['location'=>'DEL','interface'=>'download']);
+        foreach($deliveries as $deliver_id) {
+            $sql = 'SELECT file_id,file_name_orig FROM '.$table_prefix.'file '.
+                   'WHERE location_id ="DEL'.$deliver_id.'" ORDER BY file_id ';
+            $deliver_files = $db->readSqlList($sql);
+            if($deliver_files != 0) {
+                foreach($deliver_files as $file_id => $file_name) {
+                    $attach_file['name'] = $file_name;
+                    $attach_file['path'] = $docs->fileDownload($file_id,'FILE'); 
+                    if(substr($attach_file['path'],0,5) !== 'Error' and file_exists($attach_file['path'])) {
+                        $attach[] = $attach_file;
+                        $attach_msg .= $deliver_details[$deliver_id]['deliver']['client'].': '.$file_name.'<br/>';
+                    } else {
+                        $error .= 'Error fetching files for delivery ID['.$deliver_id.']!'; 
+                    }   
+                }   
+            }
+        }
+
+        //configure and send email
+        if($error == '') {
+            $mail_from = ''; //will use default MAIL_FROM
+            $mail_to = $email;
+            
+            $mail_subject = SITE_NAME.' multiple delivery documents ';
+
+            if($subject !== '') $mail_subject .= ': '.$subject;
+            
+            $mail_body = '<h1>Hi there.</h1>';
+            
+            if($message !== '') $mail_body .= '<h3>'.$message.'</h3>';
+                        
+            $mail_body .= 'All documents attached to this email: <br/>'.$attach_msg.'<br/>';
+            
+            $mail_body .= $mail_footer.'<br/>';
+                        
+            $mail_param['attach'] = $attach;
+
+            $mail->sendEmail($mail_from,$mail_to,$mail_subject,$mail_body,$error_tmp,$mail_param);
+            if($error_tmp != '') { 
+                $error .= 'Error sending delivery douments to email['. $mail_to.']:'.$error_tmp; 
+            }       
+        }  
+            
+        if($error == '') return true; else return false;  
+    }
+
     public static function createDeliverPdf($db,ContainerInterface $container,$deliver_id,&$doc_name,&$error)
     {
         $error = '';
@@ -758,7 +975,7 @@ class Helpers {
         $table_items = TABLE_PREFIX.'deliver_item';
         $system = $container->system;
 
-        $show_price = false;
+        $show_price = DELIVER_NOTE_PRICE;
 
         $business_address = $system->getDefault('STORE_ADDRESS','No address setup');
         $business_contact = $system->getDefault('STORE_CONTACT','No contacts details');
@@ -1329,5 +1546,7 @@ class Helpers {
         }
 
     }
+
+
 }
 ?>

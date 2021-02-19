@@ -3,7 +3,10 @@ use Seriti\Tools\Form;
 use Seriti\Tools\Html;
 
 $list_param['class'] = 'form-control edit_input';
+
 $item_param['class'] = 'form-control input-sm';
+$item_param['onchange'] = 'javascript:item_select()';
+$item_param['xtra'] = ['0'=>'Select delivery item'];
 
 $totals = $data['totals'];
 

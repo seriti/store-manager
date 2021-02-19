@@ -28,8 +28,9 @@ class Client extends Table
 
         $this->addAction(['type'=>'edit','text'=>'edit','icon_text'=>'edit']);
         $this->addAction(['type'=>'delete','text'=>'delete','icon_text'=>'delete','pos'=>'R']);
-        $this->addAction(['type'=>'popup','text'=>'Locations','url'=>'client_location','mode'=>'view','width'=>600,'height'=>600]);
-
+        if(CLIENT_LOCATION) {
+            $this->addAction(['type'=>'popup','text'=>'Locations','url'=>'client_location','mode'=>'view','width'=>600,'height'=>600]);    
+        }
         $this->addSearch(['client_id','name','contact','account_code','email','cell','tel','address','note','status'],['rows'=>3]);
 
 

@@ -152,7 +152,7 @@ class DeliverWizard extends Wizard
                 $subtotal_id = 'subtotal_'.$i;
                 $tax_id = 'tax_'.$i;
                 $total_id = 'total_'.$i;
-                if(isset($_POST[$item_id])) {
+                if(isset($_POST[$item_id]) and $_POST[$item_id] != 0) {
                     $n++;
                     $item = [];
                     
@@ -311,23 +311,24 @@ class DeliverWizard extends Wizard
             //finally SETUP payment gateway form if that option requested, or email EFT instructions
             if(!$this->errors_found) {
                 
-                /*
+                
                 if($this->form['confirm_action'] === 'EMAIL') {
                     
-                    //NB: if no email specified then uses default supplier email
+                    //NB: if no email specified then uses default client email
                     $param = ['cc_admin'=>true,'email'=>$this->form['confirm_email']];
                     $subject = 'Confirmation';
                     $message = $this->form['note'];
-                    Helpers::sendReceptionConfirmation($this->db,$this->table_prefix,$this->container,$sale_id,$subject,$message,$param,$error_tmp);
+                             
+                    Helpers::sendDeliverConfirmation($this->db,$this->table_prefix,$this->container,$deliver_id,$subject,$message,$param,$error_tmp);
                     if($error_tmp !== '') {
-                        $message = 'We could not email supplier order details, but your order has been successfully saved.';
+                        $message = 'We could not email client delivery details, but your delivery has been successfully saved.';
                         if($this->debug) $message .= $error_tmp;
                         $this->addMessage($message);
                     } else {
-                        $this->addMessage('Successfully emailed order details to Supplier at: '.$this->form['confirm_email']);
+                        $this->addMessage('Successfully emailed delivery details to client at: '.$this->form['confirm_email']);
                     }
                 }
-                */
+                
                 
             }
         } 

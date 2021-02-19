@@ -41,6 +41,9 @@ class Config
         define('MODULE_LOGO','<span class="glyphicon glyphicon-th"></span> ');
         define('MODULE_PAGE',URL_CLEAN_LAST);
 
+        define('CLIENT_LOCATION',true); //allow/disallow multiple client delivery locations
+        define('DELIVER_NOTE_PRICE',false); //show/hide price data in delivery notes
+ 
         define('ACCESS_RANK',['GOD'=>1,'ADMIN'=>2,'USER'=>5,'VIEW'=>10]);
         define('TAX_RATE',0.15);
         
