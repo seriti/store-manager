@@ -20,7 +20,14 @@ class DeliverPdf extends Pdf
     protected $text_block = [];
     //elements contain single text value
     protected $text_element = [];
+
+    protected $logo = ['display'=>false,'path'=>'/full/path/to/logo','top'=>10,'left'=>10,'width'=>50,'height'=>20,'margin'=>20];
     
+    public function addLogo($param = []) 
+    { 
+        $this->logo = $param;
+    }
+
 
     public function addTextBlock($name,$content = []) 
     { 
@@ -74,13 +81,22 @@ class DeliverPdf extends Pdf
 
         //add business details content
         $shift_x = $this->block_margin;
-        $this->SetY($this->invoice_margin + $this->block_margin);
-        $this->changeFont('H2');
-        $this->Cell($shift_x);
-        $this->Cell(0,$title_h,$this->text_element['business_title'],0,0,'L',0);
-        $this->Ln($title_h);
-        $this->changeFont('TEXT');
+        
+        if($this->logo['display']) {
+            if(file_exists($this->logo['path'])) {
+                $this->Image($this->logo['path'],$this->logo['left'],$this->logo['top'],$this->logo['width'],$this->logo['height']);
+                $this->SetY($this->invoice_margin+$this->logo['margin']);
+            }
+        } else {
+            $this->SetY($this->invoice_margin + $this->block_margin);
+            $this->changeFont('H2');
+            $this->Cell($shift_x);
+            $this->Cell(0,$title_h,$this->text_element['business_title'],0,0,'L',0);
+            $this->Ln($title_h);
+        }
+        
         //left half text block
+        $this->changeFont('TEXT');
         $temp_y = $this->getY();
         $this->Cell($shift_x);
         $this->MultiCell($block_w/2,$row_h,$this->text_block['business_address'],0,'L',0);

@@ -201,6 +201,9 @@ function show_item_price(str,price_id) {
 
         var price = document.getElementById(price_id);
         price.value = item.price_buy;
+
+        //force recalc for price change
+        price.dispatchEvent(new Event('change'));
     }    
     
 }

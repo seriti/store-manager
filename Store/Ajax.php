@@ -145,13 +145,21 @@ class Ajax
     {
         $error = '';
         $html = '';
-       
-        $item_id = Secure::clean('alpha',$form['item_id']);
-       
+
+        if(isset($form['source'])) $source = $form['source']; else $source = 'item';
+
+        if($source === 'store') {
+            $data_id = Secure::clean('alpha',$form['data_id']); 
+            $stock = Helpers::getStockInStoreId($this->db,$this->table_prefix,$data_id);  
+            $item_id = $stock['item_id'];
+        } else {
+            $item_id = Secure::clean('alpha',$form['item_id']);    
+        }
+              
         $item = Helpers::get($this->db,$this->table_prefix,'item',$item_id);   
        
         if($item == 0) {
-            $output = 'ERROR: No item data found';
+            $output = 'ERROR: No item['.$item_id.'] data found';
         } else {
             $output = json_encode($item);
         }

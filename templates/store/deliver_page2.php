@@ -21,6 +21,10 @@ if(!isset($data['item_count'])) $data['item_count'] = 0;
     <div class="col-sm-3"><strong><?php echo $data['client']['name']; ?></strong></div>
   </div>
   <div class="row">
+    <div class="col-sm-3">Client location:</div>
+    <div class="col-sm-3"><strong><?php echo $data['location']['name'].'</strong><br/>'.nl2br($data['location']['address']); ?></div>
+  </div>
+  <div class="row">
     <div class="col-sm-3">Delivery from store:</div>
     <div class="col-sm-3"><strong><?php echo $data['store']['name']; ?></strong></div>
   </div>
@@ -182,7 +186,7 @@ function item_select() {
 
     //alert('selected:'+item.options[item.selectedIndex].text+' item element id:'+item_name+ ' price element name:'+price_name);
 
-    var param = 'item_id='+item_id;
+    var param = 'source=store&data_id='+item_id;
     xhr('ajax?mode=stock_item',param,show_item_price,price_name);
 }
 
@@ -196,6 +200,8 @@ function show_item_price(str,price_id) {
 
         var price = document.getElementById(price_id);
         price.value = item.price_sell;
+        //force recalc for price change
+        price.dispatchEvent(new Event('change'));
     }    
     
 }

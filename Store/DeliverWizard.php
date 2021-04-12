@@ -71,10 +71,13 @@ class DeliverWizard extends Wizard
 
             
             $client_id = $this->form['client_id'];
+            $client_location_id = $this->form['client_location_id'];
             $store_id = $this->form['store_id'];
 
             $this->data['client'] = Helpers::get($this->db,TABLE_PREFIX,'client',$client_id);
+            $this->data['location'] = Helpers::get($this->db,TABLE_PREFIX,'client_location',$client_location_id,'location_id');
             $this->data['store'] = Helpers::get($this->db,TABLE_PREFIX,'store',$store_id);
+            
 
             //*** Sales functionality not implemented yet ***
             $sale_id = 0;
@@ -283,7 +286,8 @@ class DeliverWizard extends Wizard
                     
                     $this->db->insertRecord($table_deliver_item,$deliver_item,$error_tmp);
                     if($error_tmp !== '') {
-                        $error .= 'We could not save reception item['.$item['id'].']';
+                        //NB: $item['id'] refers to stock_store data_id
+                        $error .= 'We could not save delivery stock store item['.$item['id'].']';
                         if($this->debug) $error .= $error_tmp;
                         $this->addError($error);
                     }
@@ -291,8 +295,8 @@ class DeliverWizard extends Wizard
                     //NB: $item['id'] links to stock_store store_id and stock_id
                     Helpers::updateStockDelivered($this->db,TABLE_PREFIX,$deliver['store_id'],$item['stock_id'],$deliver_item['quantity'],$error_tmp);
                     if($error_tmp !== '') {
-                        $error .= 'We could not update stock store item['.$item['id'].']';
-                        if($this->debug) $error .= $error_tmp;
+                        $error .= 'We could not update stock store item['.$item['id'].'] ';
+                        $error .= $error_tmp; //if($this->debug)
                         $this->addError($error);
                     }
 

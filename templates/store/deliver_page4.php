@@ -18,6 +18,10 @@
     <div class="col-sm-3"><strong><?php echo $data['client']['name']; ?></strong></div>
   </div>
   <div class="row">
+    <div class="col-sm-3">Client location:</div>
+    <div class="col-sm-3"><strong><?php echo $data['location']['name'].'</strong><br/>'.nl2br($data['location']['address']); ?></div>
+  </div>
+  <div class="row">
     <div class="col-sm-3">From store:</div>
     <div class="col-sm-3"><strong><?php echo $data['store']['name']; ?></strong></div>
   </div>

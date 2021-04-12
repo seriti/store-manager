@@ -1017,7 +1017,16 @@ class Helpers {
         $pdf->SetMargins($pdf->page_margin[1],$pdf->page_margin[0],$pdf->page_margin[2]);
 
         //assign deliver HEADER data 
+        //NB: is only used if no logo image set.
         $pdf->addTextElement('business_title',SITE_NAME);
+
+        //check custom pdf setup for presence of a logo and use that if set.
+        if(!isset($pdf->bg_image[5]) or $pdf->bg_image[5] !== 'YES') {
+            $logo_path = $pdf_dir.'PDF_logo1.png';
+            //width = 0 allows to scale proportionally
+            $pdf->addLogo(['display'=>true,'path'=>$logo_path,'top'=>12,'left'=>12,'width'=>0,'height'=>14,'margin'=>16]);
+        } 
+        
         $pdf->addTextElement('doc_name','Delivery Note');
         $pdf->addTextElement('doc_date',$deliver['date']);
         $pdf->addTextElement('doc_no',$doc_no);
