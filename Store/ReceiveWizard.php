@@ -194,9 +194,15 @@ class ReceiveWizard extends Wizard
                         Validate::number($item_desc,$total_min,$total_max,$item['total'],$error_str);
                         if($error_str !== '') $this->addError($error_str);
                         
-                        $calc_subtotal = round(($item['amount']*$item['price']),2);
-                        $calc_tax = round(($calc_subtotal*TAX_RATE),2);
-                        $calc_total = $item['subtotal'] + $item['tax'];
+                        if(PRICE_TAX_INCLUSIVE) {
+                            $calc_total = round(($item['amount'] * $item['price']),2);
+                            $calc_subtotal = round(($calc_total / (1 + TAX_RATE)),2);
+                            $calc_tax = $calc_total - $calc_subtotal;
+                        } else {
+                            $calc_subtotal = round(($item['amount'] * $item['price']),2);
+                            $calc_tax = round(($calc_subtotal * TAX_RATE),2);
+                            $calc_total = $item['subtotal'] + $item['tax'];
+                        }
 
                         if(abs($calc_subtotal - $item['subtotal']) > $calc_error)  {
                             $this->addError($item['name'].' calculated subtotal['.$calc_subtotal.'] NOT = input['.$item['subtotal'].']');

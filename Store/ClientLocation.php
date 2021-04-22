@@ -20,7 +20,7 @@ class ClientLocation extends Table
         $this->addTableCol(['id'=>'name','type'=>'STRING','title'=>'Name']);
         $this->addTableCol(['id'=>'address','type'=>'TEXT','title'=>'Address','required'=>false,'list'=>true]);
         $this->addTableCol(['id'=>'contact','type'=>'STRING','title'=>'Contact person']);
-        $this->addTableCol(['id'=>'cell','type'=>'STRING','title'=>'Cell','required'=>false,'list'=>false]);
+        $this->addTableCol(['id'=>'cell','type'=>'STRING','title'=>'Cell','required'=>false,'list'=>true]);
         $this->addTableCol(['id'=>'tel','type'=>'STRING','title'=>'Tel','required'=>false,'list'=>false]);
         $this->addTableCol(['id'=>'email','type'=>'EMAIL','title'=>'Email','required'=>false,'list'=>false]);
         $this->addTableCol(['id'=>'map_lat','type'=>'DECIMAL','title'=>'Map latitude','required'=>false,'list'=>false]);

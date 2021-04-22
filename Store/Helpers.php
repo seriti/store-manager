@@ -976,6 +976,7 @@ class Helpers {
         $system = $container->system;
 
         $show_price = DELIVER_NOTE_PRICE;
+        $show_contact = DELIVER_NOTE_CONTACT;
 
         $business_address = $system->getDefault('STORE_ADDRESS','No address setup');
         $business_contact = $system->getDefault('STORE_CONTACT','No contacts details');
@@ -988,9 +989,23 @@ class Helpers {
 
         if($deliver['client_location_id'] == 0) {
             $location['address'] = $client['address'];
+            $location['contact'] = $client['contact'];
+            $location['cell'] = $client['cell'];
+            $location['tel'] = $client['tel'];
         } else {
             $location = self::get($db,TABLE_PREFIX,'client_location',$deliver['client_location_id'],'location_id');
         }
+
+        if($show_contact) {
+            $contact = [];
+            if($location['contact'] != '') $contact[] = $location['contact'];
+            if($location['cell'] != '') $contact[] = $location['cell'];
+            if($location['tel'] != '') $contact[] = $location['tel'];
+            $contact_str = implode(',',$contact);
+        } else {
+            $contact_str = '';
+        }
+
         
         $sql = 'SELECT data_id,stock_id,quantity,price,subtotal,tax,total '.
                'FROM '.$table_items.' WHERE deliver_id = "'.$db->escapeSql($deliver_id).'" '.
@@ -1034,8 +1049,8 @@ class Helpers {
         $pdf->addTextBlock('business_address',$business_address);
         $pdf->addTextBlock('business_contact',$business_contact);
 
-        $pdf->addTextBlock('client_detail',$client['address']);
-        $pdf->addTextBlock('client_deliver',$location['address']);
+        $pdf->addTextBlock('client_detail',$client['name']."\r\n".$client['address']);
+        $pdf->addTextBlock('client_deliver','Deliver to: '.$contact_str."\r\n".$location['address']);
 
         $pdf->addTextElement('acc_no',$client['account_code']);
         $pdf->addTextElement('acc_ref',$deliver['client_order_no']);

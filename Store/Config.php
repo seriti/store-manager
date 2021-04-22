@@ -43,9 +43,12 @@ class Config
 
         define('CLIENT_LOCATION',true); //allow/disallow multiple client delivery locations
         define('DELIVER_NOTE_PRICE',false); //show/hide price data in delivery notes
- 
+        define('DELIVER_NOTE_CONTACT',true); //show/hide client location contact data in delivery notes next to "Deliver to" address
+
         define('ACCESS_RANK',['GOD'=>1,'ADMIN'=>2,'USER'=>5,'VIEW'=>10]);
+        
         define('TAX_RATE',0.15);
+        define('PRICE_TAX_INCLUSIVE',false); //stock item prices include/exclude tax
         
         $setup_pages = ['location','store','item','item_category','supplier','client'];
 

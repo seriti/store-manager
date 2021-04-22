@@ -109,6 +109,8 @@ $js .= 'var item_count = '.$data['item_count'].';';
 $js .= 'var html_item = \''.$html_item.'\';';
 
 $js .= 'var tax_rate = '.TAX_RATE.';';
+
+$js .= 'var price_tax_inclusive = '.PRICE_TAX_INCLUSIVE.';';
                        
 echo $js;        
 
@@ -223,9 +225,15 @@ function calc_total() {
     var amount = document.getElementById(amount_name).value;
     var price = document.getElementById(price_name).value;
     
-    var subtotal  = amount * price;
-    var tax = subtotal * tax_rate;
-    var total = subtotal + tax;
+    if(price_tax_inclusive) {
+        var total = amount * price;
+        var subtotal = total / (1 + tax_rate);
+        var tax = total - subtotal;
+    } else {
+        var subtotal = amount * price;
+        var tax = subtotal * tax_rate;
+        var total = subtotal + tax;  
+    }
 
     document.getElementById(subtotal_name).value = subtotal.toFixed(2);
     document.getElementById(tax_name).value = tax.toFixed(2);

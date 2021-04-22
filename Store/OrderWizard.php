@@ -124,9 +124,15 @@ class OrderWizard extends Wizard
                         Validate::number($item_desc,$price_min,$price_max,$item['price'],$error_str);
                         if($error_str !== '') $this->addError($error_str);
 
-                        $item['subtotal'] = round(($item['amount']*$item['price']),2);
-                        $item['tax'] = round(($item['subtotal']*TAX_RATE),2);
-                        $item['total'] = $item['subtotal'] + $item['tax'];
+                        if(PRICE_TAX_INCLUSIVE) {
+                            $item['total'] = round(($item['amount']*$item['price']),2);
+                            $item['subtotal'] = round(($item['total'] / (1 + TAX_RATE)),2);
+                            $item['tax'] = $item['total'] - $item['subtotal'];
+                        } else {
+                            $item['subtotal'] = round(($item['amount']*$item['price']),2);
+                            $item['tax'] = round(($item['subtotal']*TAX_RATE),2);
+                            $item['total'] = $item['subtotal'] + $item['tax'];
+                        }
 
                         $subtotal += $item['subtotal'];
                         $tax += $item['tax'];
