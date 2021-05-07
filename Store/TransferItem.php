@@ -22,12 +22,11 @@ class TransferItem extends Table
                             'show_sql'=>'SELECT CONCAT("Transfer ID[",transfer_id,"] ",date) FROM '.TABLE_PREFIX.'transfer WHERE transfer_id = "{KEY_VAL}" ']);
 
         $this->addTableCol(['id'=>'data_id','type'=>'INTEGER','title'=>'Data ID','key'=>true,'key_auto'=>true,'list'=>false]);
-        $this->addTableCol(['id'=>'stock_id','type'=>'INTEGER','title'=>'Stock','edit'=>false]);
+        $this->addTableCol(['id'=>'stock_id','type'=>'INTEGER','title'=>'Stock']);
         $this->addTableCol(['id'=>'quantity','type'=>'DECIMAL','title'=>'Quantity']);
         $this->addTableCol(['id'=>'total_kg','type'=>'DECIMAL','title'=>'Total Kg']);
         $this->addTableCol(['id'=>'note','type'=>'TEXT','title'=>'Note','required'=>false]);
-        //$this->addTableCol(['id'=>'status','type'=>'STRING','title'=>'Status']);
-
+        //$this->addTableCol(['id'=>'status','type'=>'STRING','title'=>'Status','edit'=>false]);
 
         $this->addSortOrder('T.data_id DESC','Most recent first','DEFAULT');
 
@@ -35,6 +34,8 @@ class TransferItem extends Table
         $this->addAction(['type'=>'delete','text'=>'delete','icon_text'=>'delete','pos'=>'R']);
 
         $this->addSearch(['data_id','transfer_id','stock_id','quantity','note'],['rows'=>1]);
+
+        $this->addSelect('stock_id','SELECT S.stock_id, I.name FROM '.TABLE_PREFIX.'stock AS S JOIN '.TABLE_PREFIX.'item AS I USING(item_id) ORDER BY I.name');
     }
 
     protected function beforeProcess($id) 
@@ -87,7 +88,7 @@ class TransferItem extends Table
 
     protected function afterUpdate($id,$context,$data) {
         $error = '';
-        Helpers::updateTransfer($this->db,TABLE_PREFIX,$this->master['key_val'],$error);
+        Helpers::updateTransfer($this->db,TABLE_PREFIX,'TOTALS',$this->master['key_val'],$error);
     }
     
     protected function beforeDelete($id,&$error) 
@@ -116,7 +117,7 @@ class TransferItem extends Table
     
     protected function afterDelete($id) {
         $error = '';
-        Helpers::updateTransfer($this->db,TABLE_PREFIX,$this->master['key_val'],$error);
+        Helpers::updateTransfer($this->db,TABLE_PREFIX,'TOTALS',$this->master['key_val'],$error);
     }
     //protected function beforeValidate($col_id,&$value,&$error,$context) {}
 

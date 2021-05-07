@@ -21,6 +21,7 @@ class Deliver extends Table
         parent::setup($param);
 
         $this->addForeignKey(['table'=>TABLE_PREFIX.'deliver_item','col_id'=>'deliver_id','message'=>'Deliver items exist for this Deliver']);
+
         $this->addTableCol(['id'=>'deliver_id','type'=>'INTEGER','title'=>'Deliver ID','key'=>true,'key_auto'=>true]);
         $this->addTableCol(['id'=>'date','type'=>'DATE','title'=>'Date','new'=>date('Y-m-d')]);
         $this->addTableCol(['id'=>'client_id','type'=>'INTEGER','title'=>'Client','join'=>'name FROM '.TABLE_PREFIX.'client WHERE client_id']);
@@ -46,10 +47,10 @@ class Deliver extends Table
                            'link_url'=>'deliver_file','link_data'=>'SIMPLE','width'=>'700','height'=>'600']);
 
         $this->addAction(['type'=>'check_box','text'=>'']); 
-        $this->addAction(['type'=>'edit','text'=>'edit','icon_text'=>'edit']);
+        //$this->addAction(['type'=>'edit','text'=>'edit','icon_text'=>'edit']);
         $this->addAction(['type'=>'delete','text'=>'delete','icon_text'=>'delete','pos'=>'R']);
 
-        $this->addAction(['type'=>'popup','text'=>'Deliver item','url'=>'deliver_item','mode'=>'view','width'=>600,'height'=>600]);
+        $this->addAction(['type'=>'popup','text'=>'Deliver&nbsp;items','url'=>'deliver_item','mode'=>'view','width'=>600,'height'=>600]);
 
         $this->addSearch(['deliver_id','date','client_id','subtotal','tax','total','note','status'],['rows'=>2]);
 

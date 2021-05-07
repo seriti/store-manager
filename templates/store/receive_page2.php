@@ -3,10 +3,12 @@ use Seriti\Tools\Form;
 use Seriti\Tools\Html;
 
 $list_param['class'] = 'form-control edit_input';
+
 $money_param['class'] = 'form-control input-sm';
 
 $item_param['class'] = 'form-control edit_input';
 $item_param['onchange'] = 'javascript:item_select()';
+$item_param['xtra'] = ['0'=>'Select reception item'];
 
 $totals = $data['totals'];
 
@@ -110,7 +112,7 @@ $js .= 'var html_item = \''.$html_item.'\';';
 
 $js .= 'var tax_rate = '.TAX_RATE.';';
 
-$js .= 'var price_tax_inclusive = '.PRICE_TAX_INCLUSIVE.';';
+$js .= 'var price_tax_inclusive = '.json_encode(PRICE_TAX_INCLUSIVE).';';
                        
 echo $js;        
 

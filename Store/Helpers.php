@@ -534,60 +534,161 @@ class Helpers {
         if($transfer['status'] !== 'NEW') {
             $error .= 'Cannot update item as transfer status['.$transfer['status'].'] is not NEW ';
         }
-      
-        //reverse original transfer
+        
+        //reverse original transfer 
         if($error === '' and ($update_type === 'UPDATE' or $update_type === 'DELETE')) {
             $item = self::get($db,$table_prefix,'transfer_item',$item_id,'data_id');
-            $from_store_id = $transfer['to_store_id'];
-            $to_store_id = $transfer['from_store_id'];
 
-            self::updateStockTransfered($db,$table_prefix,$from_store_id,$to_store_id,$item['stock_id'],$item['quantity'],$error_tmp);
+            //add back original amount to FROM store
+            self::updateStockInStore($db,$table_prefix,$transfer['from_store_id'],$item['stock_id'],$item['quantity'],$error_tmp);
             if($error_tmp !== '') {
-                $error .= 'Could not reverse original quantity transfered. ';
+                $error .= 'Could not reverse original quantity transfered FROM Store. ';
                 if(DEBUG) $error .= $error_tmp;
             }
+
+            //if confirmed need to reverse original amount from TO store as well
+            if($transfer['status'] === 'CONFIRMED') {
+                $quantity = abs($item['quantity']) * -1;
+                self::updateStockInStore($db,$table_prefix,$transfer['to_store_id'],$item['stock_id'],$quantity,$error_tmp);
+                if($error_tmp !== '') {
+                    $error .= 'Could not reverse original quantity transfered TO Store. ';
+                    if(DEBUG) $error .= $error_tmp;
+                }
+            }
+            
+            /*
+            $from_store_id = $transfer['to_store_id'];
+            $to_store_id = $transfer['from_store_id'];
+            self::updateStockTransfered($db,$table_prefix,'TO',$from_store_id,$to_store_id,$item['stock_id'],$item['quantity'],$error_tmp);
+            if($error_tmp !== '') {
+                $error .= 'Could not reverse original quantity transfered TO Store. ';
+                if(DEBUG) $error .= $error_tmp;
+            }
+            */
         }    
 
         //update new value if not a delete
         if($error === '' and ($update_type === 'UPDATE' or $update_type === 'INSERT')) {
-            self::updateStockTransfered($db,$table_prefix,$transfer['from_store_id'],$transfer['to_store_id'],$update['stock_id'],$update['quantity'],$error_tmp);
+            
+            $quantity_to = abs($update['quantity']);
+            $quantity_from = $quantity_to * -1;
+
+            self::updateStockInStore($db,$table_prefix,$transfer['from_store_id'],$update['stock_id'],$quantity_from,$error_tmp);
             if($error_tmp !== '') {
-                $error .= 'Could not update changed item stock. ';
+                $error .= 'Could not remove quantity transfered FROM Store. ';
                 if(DEBUG) $error .= $error_tmp;
-            }  
+            }
+
+            //if confirmed need to update TO store as well
+            if($transfer['status'] === 'CONFIRMED') {
+                self::updateStockInStore($db,$table_prefix,$transfer['to_store_id'],$update['stock_id'],$quantity_to,$error_tmp);
+                if($error_tmp !== '') {
+                    $error .= 'Could not add quantity transfered TO Store. ';
+                    if(DEBUG) $error .= $error_tmp;
+                }
+            }
+
+            /*
+            self::updateStockTransfered($db,$table_prefix,'FROM',$transfer['from_store_id'],$transfer['to_store_id'],$update['stock_id'],$update['quantity'],$error_tmp);
+            if($error_tmp !== '') {
+                $error .= 'Could not update changed item stock FROM store. ';
+                if(DEBUG) $error .= $error_tmp;
+            } 
+            */ 
         }
    
 
         if($error === '') return true; else return false;
-
-        if($error === '') return true; else return false;
     }
 
-    //update order totals after item update
-    public static function updateTransfer($db,$table_prefix,$transfer_id,&$error)
+
+
+    //update transfer totals after item update
+    public static function updateTransfer($db,$table_prefix,$update,$transfer_id,&$error)
     {
         $error = '';
         $output = [];
         
         $table_transfer = $table_prefix.'transfer';
         $table_transfer_item = $table_prefix.'transfer_item';
+
+        $transfer = self::get($db,$table_prefix,'transfer',$transfer_id);
         
-        $sql = 'SELECT COUNT(*) AS item_no,SUM(total_kg) AS total_kg '.
-               'FROM '.$table_transfer_item.'  '.
-               'WHERE transfer_id = "'.$db->escapeSql($transfer_id).'" ';
-        $totals = $db->readSqlRecord($sql);
-                
-        $sql = 'UPDATE '.$table_transfer.'  '.
-               'SET item_no = "'.$totals['item_no'].'", '.
-                   'total_kg =  "'.$totals['total_kg'].'" '.
-               'WHERE transfer_id = "'.$db->escapeSql($transfer_id).'" ';
-        $db->executeSql($sql,$error);
+        if($update === 'TOTALS') {
+            $sql = 'SELECT COUNT(*) AS item_no,SUM(total_kg) AS total_kg '.
+                   'FROM '.$table_transfer_item.'  '.
+                   'WHERE transfer_id = "'.$db->escapeSql($transfer_id).'" ';
+            $totals = $db->readSqlRecord($sql);
+                    
+            $sql = 'UPDATE '.$table_transfer.'  '.
+                   'SET item_no = "'.$totals['item_no'].'", '.
+                       'total_kg =  "'.$totals['total_kg'].'" '.
+                   'WHERE transfer_id = "'.$db->escapeSql($transfer_id).'" ';
+            $db->executeSql($sql,$error);    
+        }
+
+        if($update === 'CONFIRM') {
+            if($transfer['status'] !== 'NEW') {
+                $error .= 'Cannot CONFIRM a transfer unless status = NEW';
+            } else {
+                $db->executeSql('START TRANSACTION',$error_tmp);
+                if($error_tmp !== '') {
+                    $error .= 'Could not START Transfer confirm transaction';
+                } else {        
+                    $sql = 'SELECT data_id,stock_id,quantity,total_kg,status '.
+                           'FROM '.$table_transfer_item.' WHERE transfer_id = "'.$db->escapeSql($transfer_id).'" ';
+                    $items = $db->readSqlarray($sql);
+                    foreach($items as $data_id => $item) {
+
+                        Helpers::updateStockInStore($db,$table_prefix,$transfer['to_store_id'],$item['stock_id'],$item['quantity'],$error_tmp);
+                        if($error_tmp !== '') {
+                            $error .= 'We could not update TO Store amounts for stock ID['.$item['stock_id'].'] ';
+                            if(DEBUG) $error .= $error_tmp;
+                        } else {
+                            $sql = 'UPDATE '.$table_transfer_item.' SET status = "CONFIRMED" '.
+                                   'WHERE data_id = "'.$db->escapeSql($data_id).'" ';
+                            $db->executeSql($sql,$error_tmp);
+                            if($error_tmp !== '') $error .= 'We could not CONFIRM transfer ID['.$transfer_id.'] ';
+                        }
+
+                        /*
+                        Helpers::updateStockTransfered($db,$table_prefix,'TO',$transfer['from_store_id'],$transfer['to_store_id'],$item['stock_id'],$item['quantity'],$error_tmp);
+                        if($error_tmp !== '') {
+                            $error .= 'We could not update TO Store amounts for stock ID['.$item['stock_id'].'] ';
+                        } else {
+                            $sql = 'UPDATE '.$table_transfer_item.' SET status = "CONFIRMED" '.
+                                   'WHERE data_id = "'.$db->escapeSql($data_id).'" ';
+                            $db->executeSql($sql,$error_tmp);
+                            if($error_tmp !== '') $error .= 'We could not CONFIRM transfer ID['.$transfer_id.'] ';
+                        }
+                        */
+                    }
+                }    
+
+                if($error === '') {
+                    $sql = 'UPDATE '.$table_transfer.' SET status = "CONFIRMED" '.
+                           'WHERE transfer_id = "'.$db->escapeSql($transfer_id).'" ';
+                    $db->executeSql($sql,$error_tmp);
+                    if($error_tmp !== '') $error .= 'We could not CONFIRM transfer ID['.$transfer_id.']';
+                }
+
+                if($error !== '') {
+                    $db->executeSql('ROLLBACK',$error_tmp);
+                    if($error_tmp !== '') $error .= 'Could not ROLLBACK transfer confirm transaction';
+                } else {
+                    $db->executeSql('COMMIT',$error_tmp);
+                    if($error_tmp !== '') $error .= 'Could not COMMIT transfer confirm transaction';
+                }
+            }
+        }
+        
         
         if($error !== '') return false; else return true;
     }
 
-    //validates quantities and updates store stock
-    public static function updateStockTransfered($db,$table_prefix,$from_store_id,$to_store_id,$stock_id,$quantity,&$error)
+    //validates quantities and updates store stock, $update_store = FROM or TO or BOTH
+    //NOT used anywhere, REPLACED BY using updateStockInStore(), makes for massive confusion as it is, maybe repurpose, probably remove entirely
+    public static function updateStockTransfered($db,$table_prefix,$update_store,$from_store_id,$to_store_id,$stock_id,$quantity,&$error)
     {
         $error = '';
         $output = [];
@@ -603,33 +704,80 @@ class Helpers {
         $stock_to = self::getStockInStore($db,$table_prefix,$stock_id,$to_store_id);  
 
         //check stock in FROM store still available
-        if($stock_from['quantity'] - $quantity < 0 ) {
-            $error = 'Insufficient stock['.$stock['summary'].'] in FROM store['.$stock_from['quantity'].'] for transfer amount['.$quantity.'] ';
-            return false;
-        }
-        
-        //update FROM store stock
-        $sql = 'UPDATE '.$table_stock_store.' SET quantity = quantity - '.$quantity.' '.
-               'WHERE data_id = "'.$stock_from['data_id'].'" ';
-        $db->executeSql($sql,$error_tmp);
-        if($error_tmp !== '') $error .= 'Could not update FROM store stock levels.';
-        
-        //update TO store stock
-        if($stock_to != 0) {
-            $sql = 'UPDATE '.$table_stock_store.' SET quantity = quantity + '.$quantity.' '.
-                   'WHERE data_id = "'.$stock_to['data_id'].'" ';
+        if($update_store === 'FROM' or $update_store === 'BOTH') {
+            if($stock_from['quantity'] - $quantity < 0 ) {
+                $error = 'Insufficient stock['.$stock['summary'].'] in FROM store['.$stock_from['quantity'].'] for transfer amount['.$quantity.'] ';
+                return false;
+            }
+
+            //update FROM store stock
+            $sql = 'UPDATE '.$table_stock_store.' SET quantity = quantity - '.$quantity.' '.
+                   'WHERE data_id = "'.$stock_from['data_id'].'" ';
             $db->executeSql($sql,$error_tmp);
-            if($error_tmp !== '') $error .= 'Could not update TO store stock levels.';
+            if($error_tmp !== '') $error .= 'Could not update FROM store stock levels.';
+        }  
+        
+        
+        if($update_store === 'TO' or $update_store === 'BOTH') {
+            //update TO store stock
+            if($stock_to != 0) {
+                $sql = 'UPDATE '.$table_stock_store.' SET quantity = quantity + '.$quantity.' '.
+                       'WHERE data_id = "'.$stock_to['data_id'].'" ';
+                $db->executeSql($sql,$error_tmp);
+                if($error_tmp !== '') $error .= 'Could not update TO store stock levels.';
+            } else {
+                $stock_store = [];
+                $stock_store['store_id'] = $to_store_id;
+                $stock_store['stock_id'] = $stock_id;
+                $stock_store['quantity'] = $quantity;
+                
+                $data_id = $db->insertRecord($table_stock_store,$stock_store,$error_tmp);
+                if($error_tmp !== '') $error .= 'Could not create TO store stock.';
+            }
+        }        
+                
+        if($error !== '') return false; else return true;
+    }
+
+    public static function updateStockInStore($db,$table_prefix,$store_id,$stock_id,$quantity,&$error)
+    {
+        $error = '';
+
+        $table_stock_store = $table_prefix.'stock_store';
+
+        $store = self::get($db,$table_prefix,'store',$store_id); 
+
+        $stock = self::getStockItem($db,$table_prefix,$stock_id); 
+        if($stock == 0) $error .= 'Invalid stock ID['.$stock_id.']';
+        
+        $stock_store = self::getStockInStore($db,$table_prefix,$stock_id,$store_id); 
+        
+        //check sufficient stock if $quantity negative 
+        if($quantity < 0) {
+            if($stock_store == 0) {
+                $error = 'NO Stock['.$stock['summary'].'] in store['.$store['name'].'] to REMOVE amount['.abs($quantity).'] ';
+            } elseif($stock_store['quantity'] + $quantity < 0 ) {
+                $error = 'Stock['.$stock['summary'].'] in store['.$store['name'].'] amount['.$stock_store['quantity'].'] insufficient to REMOVE amount['.abs($quantity).'] ';
+            }    
+        }
+
+        if($error !== '') return false;
+           
+        if($stock_store != 0) {
+            $sql = 'UPDATE '.$table_stock_store.' SET quantity = quantity + '.$quantity.' '.
+                   'WHERE data_id = "'.$stock_store['data_id'].'" ';
+            $db->executeSql($sql,$error_tmp);
+            if($error_tmp !== '') $error .= 'Could not update store['.$store['name'].'] stock['.$stock['summary'].'] quantity.';
         } else {
             $stock_store = [];
-            $stock_store['store_id'] = $to_store_id;
+            $stock_store['store_id'] = $store_id;
             $stock_store['stock_id'] = $stock_id;
             $stock_store['quantity'] = $quantity;
             
             $data_id = $db->insertRecord($table_stock_store,$stock_store,$error_tmp);
-            if($error_tmp !== '') $error .= 'Could not create TO store stock.';
-            
-        }    
+            if($error_tmp !== '') $error .= 'Could not create store stock.';
+        }
+                
                 
         if($error !== '') return false; else return true;
     }
@@ -1205,6 +1353,9 @@ class Helpers {
         $table_deliver = $table_prefix.'deliver';
         $table_deliver_item = $table_prefix.'deliver_item';
 
+        $table_transfer = $table_prefix.'transfer';
+        $table_transfer_item = $table_prefix.'transfer_item';
+
         $table_item = $table_prefix.'item';
         $table_category = $table_prefix.'item_category';
 
@@ -1245,13 +1396,25 @@ class Helpers {
         if($store_id !== 'ALL') $sql .= 'AND D.store_id = "'.$db->escapeSql($store_id).'" ';
         $delivery = $db->readSqlArray($sql,false);
 
-        if($stock == 0 and $delivery == 0) $error .= 'NO stock found in stores or awaiting delivery confirmation';
+        //get transfer TO store stock not confirmed yet
+        $sql = 'SELECT TI.stock_id,TI.quantity,T.to_store_id AS store_id,S.name AS store, '.
+                      'ST.item_id,ST.supplier_id,ST.invoice_no,ST.quantity_in,ST.quantity_out '.
+               'FROM '.$table_transfer_item.' AS TI '.
+                     'JOIN '.$table_transfer.' AS T ON(TI.transfer_id = T.transfer_id) '.
+                     'JOIN '.$table_store.' AS S ON(T.to_store_id = S.store_id) '.
+                     'JOIN '.$table_stock.' AS ST ON(TI.stock_id = ST.stock_id) '.
+               'WHERE T.status = "NEW" ';
+        if($store_id !== 'ALL') $sql .= 'AND T.to_store_id = "'.$db->escapeSql($store_id).'" ';
+        $transfer = $db->readSqlArray($sql,false);
+
+        if($stock == 0 and $delivery == 0 and $transfer == 0) $error .= 'NO stock found in stores, awaiting delivery confirmation or transfer confirmation';
         
         if($error !== '') return false;
 
         $data = [];
         $stock_store = [];
         $stock_deliver = [];
+        $stock_transfer = [];
         $stock_items = [];
         $r = 0;
         if($scope === 'SUMMARY') {
@@ -1262,7 +1425,8 @@ class Helpers {
             $data[1][$r] = 'Item Name';
             $data[2][$r] = 'Units';
             $data[3][$r] = 'Store quantity';
-            $data[4][$r] = 'Delivery quantity'; 
+            $data[4][$r] = 'Delivery quantity';
+            $data[5][$r] = 'Transfer quantity'; 
             $r++; 
 
             if($stock != 0) {
@@ -1283,12 +1447,21 @@ class Helpers {
                 }
             }
 
+            if($transfer != 0) {
+                foreach($transfer AS $item) {
+                    if(!in_array($item['item_id'],$stock_items)) $stock_items[] = $item['item_id'];
+                    if(!isset($stock_transfer[$item['item_id']])) $stock_transfer[$item['item_id']] = 0;
+                    $stock_transfer[$item['item_id']] += $item['quantity'];
+                }
+            }
+
             foreach($stock_items AS $item_id) {
                 $data[0][$r] = $items[$item_id]['code'];
                 $data[1][$r] = $items[$item_id]['name'];
                 $data[2][$r] = $items[$item_id]['units'];
                 $data[3][$r] = $stock_store[$item_id];
                 $data[4][$r] = $stock_deliver[$item_id];
+                $data[5][$r] = $stock_transfer[$item_id];
                 $r++;
             }   
         }
@@ -1370,6 +1543,9 @@ class Helpers {
         $table_deliver = $table_prefix.'deliver';
         $table_deliver_item = $table_prefix.'deliver_item';
 
+        $table_transfer = $table_prefix.'transfer';
+        $table_transfer_item = $table_prefix.'transfer_item';
+
         $table_item = $table_prefix.'item';
         $table_category = $table_prefix.'item_category';
 
@@ -1417,13 +1593,25 @@ class Helpers {
         //if($store_id !== 'ALL') $sql .= 'AND D.store_id = "'.$db->escapeSql($store_id).'" ';
         $delivery = $db->readSqlArray($sql,false);
 
-        if($stock == 0 and $delivery == 0) $error .= 'NO stock found in stores or awaiting delivery confirmation';
+        //get transfer TO store stock not confirmed yet
+        $sql = 'SELECT TI.stock_id,TI.quantity,T.to_store_id AS store_id,S.name AS store, '.
+                      'ST.item_id,ST.supplier_id,ST.invoice_no,ST.quantity_in,ST.quantity_out '.
+               'FROM '.$table_transfer_item.' AS TI '.
+                     'JOIN '.$table_transfer.' AS T ON(TI.transfer_id = T.transfer_id) '.
+                     'JOIN '.$table_store.' AS S ON(T.to_store_id = S.store_id) '.
+                     'JOIN '.$table_stock.' AS ST ON(TI.stock_id = ST.stock_id) '.
+               'WHERE T.status = "NEW" ';
+        //if($store_id !== 'ALL') $sql .= 'AND T.to_store_id = "'.$db->escapeSql($store_id).'" ';
+        $transfer = $db->readSqlArray($sql,false);
+
+        if($stock == 0 and $delivery == 0 and $transfer == 0) $error .= 'NO stock found in stores, awaiting delivery confirmation or transfer confirmation';
         
         if($error !== '') return false;
 
         $data = [];
         $stock_store = [];
         $stock_deliver = [];
+        $stock_transfer = [];
         $stock_items = [];
         $r = 0;
         if($scope === 'SUMMARY') {
@@ -1436,6 +1624,7 @@ class Helpers {
             $data[3][$r] = 'Store';
             $data[4][$r] = 'Quantity';
             $data[5][$r] = 'Delivery quantity'; 
+            $data[6][$r] = 'Transfer quantity'; 
             $r++; 
 
             if($stock != 0) {
@@ -1458,6 +1647,15 @@ class Helpers {
                 }
             }
 
+            if($transfer != 0) {
+                foreach($transfer AS $item) {
+                    $key = $item['store_id'].':'.$item['item_id'];
+                    if(!in_array($key,$stock_items)) $stock_items[$key] = ['store_id'=>$item['store_id'],'item_id'=>$item['item_id']];
+                    if(!isset($stock_transfer[$key])) $stock_transfer[$key] = 0;
+                    $stock_transfer[$key] += $item['quantity'];
+                }
+            }
+
             $item_id_prev = '';
             foreach($stock_items AS $key=>$item) {
                 if($item['item_id'] !== $item_id_prev) {
@@ -1468,11 +1666,13 @@ class Helpers {
                         $data[3][$r] = 'Total';
                         $data[4][$r] = $total_store;
                         $data[5][$r] = $total_deliver;
+                        $data[6][$r] = $total_transfer;
                         $r++; 
                     }
 
                     $total_store = 0;
                     $total_deliver = 0;
+                    $total_transfer = 0;
                     $total_no = 0; 
                 
                     $code = $items[$item['item_id']]['code'];
@@ -1486,6 +1686,7 @@ class Helpers {
 
                 $total_store += $stock_store[$key];
                 $total_deliver += $stock_deliver[$key];
+                $total_transfer += $stock_transfer[$key];
                 $total_no++;
 
                 $data[0][$r] = $code;
@@ -1494,6 +1695,7 @@ class Helpers {
                 $data[3][$r] = $stores[$item['store_id']];
                 $data[4][$r] = $stock_store[$key];
                 $data[5][$r] = $stock_deliver[$key];
+                $data[6][$r] = $stock_transfer[$key];
                 $r++;
 
                 $item_id_prev = $item['item_id'];
@@ -1507,6 +1709,7 @@ class Helpers {
                 $data[3][$r] = 'Total';
                 $data[4][$r] = $total_store;
                 $data[5][$r] = $total_deliver;
+                $data[6][$r] = $total_transfer;
             }   
         }
         

@@ -3,7 +3,12 @@ use Seriti\Tools\Form;
 use Seriti\Tools\Html;
 
 $list_param['class'] = 'form-control edit_input';
+
 $item_param['class'] = 'form-control edit_input';
+
+$money_param['class'] = 'form-control edit_input';
+
+$textarea_param['class'] = 'form-control edit_input';
 
 
 if(!isset($data['item_count'])) $data['item_count'] = 0;
@@ -29,9 +34,6 @@ if(!isset($data['item_count'])) $data['item_count'] = 0;
     <div class="col-sm-12">
     <h1>Transfer items: <a href="javascript:add_item()">[add]</a></h1>
     <?php 
-    $item_param = [];
-    $item_param['class'] = 'form-control';
-
     //NB: item_id refers to SS.data_id and NOT original S.item_id
     $sql_item = 'SELECT SS.data_id,CONCAT(C.name,": ",I.name,"(",SU.name," - ",S.invoice_no,") ",SS.quantity,I.units," available") '.
                 'FROM '.TABLE_PREFIX.'stock_store AS SS JOIN '.TABLE_PREFIX.'stock AS S ON(SS.stock_id = S.stock_id) '.
@@ -50,8 +52,8 @@ if(!isset($data['item_count'])) $data['item_count'] = 0;
         $name_amount = 'amount_'.$i;
                 
         echo '<tr>'.
-             '<td>'.Form::sqlList($sql_item,$this->db,$name_item,$item['id'],$list_param).'</td>'.
-             '<td>'.Form::textInput($name_amount,$item['amount'],$item_param).'</td>'.
+             '<td>'.Form::sqlList($sql_item,$this->db,$name_item,$item['id'],$item_param).'</td>'.
+             '<td>'.Form::textInput($name_amount,$item['amount'],$money_param).'</td>'.
              '<td><a href="#" onclick="delete_row(this)"><img src="/images/cross.png"></a></td>'.
              '</tr>';
     }

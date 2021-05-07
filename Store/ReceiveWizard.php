@@ -78,6 +78,7 @@ class ReceiveWizard extends Wizard
             $order_id = $this->form['order_id'];
             $invoice_no = $this->form['invoice_no'];
             $location_id = $this->form['location_id'];
+            $date_receive = $this->form['date_receive'];
 
             $this->data['supplier'] = Helpers::get($this->db,TABLE_PREFIX,'supplier',$supplier_id);
             $this->data['location'] = Helpers::get($this->db,TABLE_PREFIX,'location',$location_id);
@@ -117,6 +118,15 @@ class ReceiveWizard extends Wizard
                 $this->data['item_count'] = 0;
             }
             
+            //check reception unique index, so can get meaningful error 
+            $sql = 'SELECT COUNT(*) FROM '.TABLE_PREFIX.'receive '.
+                   'WHERE supplier_id = "'.$this->db->escapeSql($supplier_id).'" AND date = "'.$this->db->escapeSql($date_receive).'" AND invoice_no = "'.$this->db->escapeSql($invoice_no).'" ';
+            $count = $this->db->readSqlValue($sql);
+            if($count != 0) {
+                $error = 'Supplier['.$this->data['supplier']['name'].'] already has '.MODULE_STORE['labels']['invoice_no'].'['.$invoice_no.'] for date['.$this->data['supplier']['name'].'].'.
+                         'Please change '.MODULE_STORE['labels']['invoice_no'].' so that unique for date';
+                $this->addError($error);
+            }       
             
 
         } 

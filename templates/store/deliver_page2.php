@@ -2,11 +2,11 @@
 use Seriti\Tools\Form;
 use Seriti\Tools\Html;
 
-$list_param['class'] = 'form-control edit_input';
-
 $item_param['class'] = 'form-control input-sm';
 $item_param['onchange'] = 'javascript:item_select()';
 $item_param['xtra'] = ['0'=>'Select delivery item'];
+
+$money_param['class'] = 'form-control input-sm';
 
 $totals = $data['totals'];
 
@@ -73,11 +73,11 @@ if(!isset($data['item_count'])) $data['item_count'] = 0;
         
         echo '<tr>'.
              '<td>'.Form::sqlList($sql_item,$this->db,$name_item,$item['id'],$item_param).'</td>'.
-             '<td>'.Form::textInput($name_amount,$item['amount'],$item_param).'</td>'.
-             '<td>'.Form::textInput($name_price,$item['price'],$item_param).'</td>'.
-             '<td>'.Form::textInput($name_subtotal,$item['subtotal'],$item_param).'</td>'.
-             '<td>'.Form::textInput($name_tax,$item['tax'],$item_param).'</td>'.
-             '<td>'.Form::textInput($name_total,$item['total'],$item_param).'</td>'.
+             '<td>'.Form::textInput($name_amount,$item['amount'],$money_param).'</td>'.
+             '<td>'.Form::textInput($name_price,$item['price'],$money_param).'</td>'.
+             '<td>'.Form::textInput($name_subtotal,$item['subtotal'],$money_param).'</td>'.
+             '<td>'.Form::textInput($name_tax,$item['tax'],$money_param).'</td>'.
+             '<td>'.Form::textInput($name_total,$item['total'],$money_param).'</td>'.
              '<td><a href="#" onclick="delete_row(this)"><img src="/images/cross.png"></a></td>'.
              '</tr>';
     }
@@ -110,7 +110,7 @@ $js .= 'var html_item = \''.$html_item.'\';';
 
 $js .= 'var tax_rate = '.TAX_RATE.';';
 
-$js .= 'var price_tax_inclusive = '.PRICE_TAX_INCLUSIVE.';';
+$js .= 'var price_tax_inclusive = '.json_encode(PRICE_TAX_INCLUSIVE).';';
                        
 echo $js;        
 

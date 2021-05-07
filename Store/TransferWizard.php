@@ -190,15 +190,24 @@ class TransferWizard extends Wizard
                 }
             }
 
-            //finally update stock quantities in FROM and TO stores
+            //finally update stock quantities in FROM store only as transfer status = NEW and NOT confirmed yet
             if(!$this->errors_found) {
                 foreach($this->data['items'] as $item) {
-                    Helpers::updateStockTransfered($this->db,TABLE_PREFIX,$this->form['from_store_id'],$this->form['to_store_id'],$item['stock_id'],$item['amount'],$error_tmp);
+                    $quantity = abs($item['amount']) * -1;
+                    Helpers::updateStockInStore($this->db,TABLE_PREFIX,$this->form['from_store_id'],$item['stock_id'],$quantity,$error_tmp);
+                    if($error_tmp !== '') {
+                        $error = 'We could not update FROM store amounts for item['.$item['name'].']';
+                        if($this->debug) $error .= $error_tmp;
+                        $this->addError($error);
+                    }
+                    /*
+                    Helpers::updateStockTransfered($this->db,TABLE_PREFIX,'FROM',$this->form['from_store_id'],$this->form['to_store_id'],$item['stock_id'],$item['amount'],$error_tmp);
                     if($error_tmp !== '') {
                         $error = 'We could not update store amounts for item['.$item['name'].']';
                         if($this->debug) $error .= $error_tmp;
                         $this->addError($error);
                     }
+                    */
                 }
             }    
 

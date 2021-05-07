@@ -2,7 +2,7 @@
 use Seriti\Tools\Form;
 use Seriti\Tools\Html;
 
-$amount_param['class'] = 'form-control edit_input';
+$money_param['class'] = 'form-control edit_input';
 
 $item_param['class'] = 'form-control edit_input';
 $item_param['onchange'] = 'javascript:item_select()';
@@ -51,8 +51,8 @@ if(!isset($data['item_count'])) $data['item_count'] = 0;
         
         echo '<tr>'.
              '<td>'.Form::sqlList($sql_item,$this->db,$name_item,$item['id'],$item_param).'</td>'.
-             '<td>'.Form::textInput($name_amount,$item['amount'],$amount_param).'</td>'.
-             '<td>'.Form::textInput($name_price,$item['price'],$amount_param).'</td>'.
+             '<td>'.Form::textInput($name_amount,$item['amount'],$money_param).'</td>'.
+             '<td>'.Form::textInput($name_price,$item['price'],$money_param).'</td>'.
              '<td><a href="#" onclick="delete_row(this)"><img src="/images/cross.png"></a></td>'.
              '</tr>';
     }
