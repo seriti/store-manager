@@ -298,7 +298,7 @@ class SetupData extends SetupModuledata
                              'VALUES("Item default category","ADMIN",2,10,"OK"),("Item secure category","GOD",1,20,"OK")');
 
         $this->addInitialSql('INSERT INTO `TABLE_PREFIXitem` (category_id,name,code,units,units_kg_convert,status) '.
-                             'VALUES(1,"My first stock item","MFSI","Kg",1,"OK"),(2,"My secure stock item","Litre",1,"OK")'); 
+                             'VALUES(1,"My first stock item","MFSI","Kg",1,"OK"),(2,"My secure stock item","MSSI","Litre",1,"OK")'); 
 
         $this->addInitialSql('INSERT INTO `TABLE_PREFIXsupplier` (name,status) '.
                              'VALUES("My first supplier","OK")');       

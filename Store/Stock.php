@@ -43,7 +43,7 @@ class Stock extends Table
         
     }
 
-    public function beforeProcess()
+    public function beforeProcess($id = 0)
     {
         if($this->mode == 'list') $this->addMessage('Click Search link below to select Store, Item, Supplier details to find stock for');
     }

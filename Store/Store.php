@@ -43,6 +43,9 @@ class Store extends Table
         $this->addSelect('location_id','SELECT location_id, name FROM '.TABLE_PREFIX.'location ORDER BY name');
         $this->addSelect('access',['list'=>$config->get('user','access'),'list_assoc'=>false]);
 
+        $status = ['OK','HIDE'];
+        $this->addSelect('status',['list'=>$status,'list_assoc'=>false]);
+
 
     }
 
